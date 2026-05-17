@@ -1,0 +1,185 @@
+"""
+Run GNN models: STGCN and DCRNN.
+Usage: python run_gnn.py [--dataset METR-LA|PEMS-BAY|both]
+"""
+
+import sys
+import os
+import argparse
+import numpy as np
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+from src import config
+from src.config import set_seed
+from src.data_loader import prepare_dataset
+from src.graph_builder import build_graph
+from src.evaluate import evaluate_predictions, print_results, save_results
+from src.train import train_model, predict_model
+
+
+def run_stgcn(data_prepared, graph_data, dataset_name, mean, std):
+    """Run STGCN model."""
+    from src.models.stgcn import STGCN
+
+    print(f"\n{'='*60}")
+    print(f"  STGCN — {dataset_name}")
+    print(f"{'='*60}")
+
+    num_sensors = data_prepared['splits']['train'][0].shape[2]
+
+    model = STGCN(
+        num_sensors=num_sensors,
+        seq_len=config.SEQ_LEN,
+        pred_len=config.PRED_LEN,
+        K=config.STGCN_K,
+        channels=config.STGCN_CHANNELS,
+    )
+
+    total_params = sum(p.numel() for p in model.parameters())
+    print(f"  Parameters: {total_params:,}")
+
+    history = train_model(
+        model, data_prepared['loaders']['train'],
+        data_prepared['loaders']['val'],
+        config, 'stgcn', dataset_name,
+        graph_data=graph_data,
+    )
+
+    predictions, ground_truth = predict_model(
+        model, data_prepared['loaders']['test'], config, 'stgcn',
+        graph_data=graph_data,
+    )
+
+    results = evaluate_predictions(predictions, ground_truth, mean, std)
+    print_results(results, model.get_name())
+    return results, predictions, history
+
+
+def run_dcrnn(data_prepared, graph_data, dataset_name, mean, std):
+    """Run DCRNN model."""
+    from src.models.dcrnn import DCRNN
+
+    print(f"\n{'='*60}")
+    print(f"  DCRNN — {dataset_name}")
+    print(f"{'='*60}")
+
+    num_sensors = data_prepared['splits']['train'][0].shape[2]
+    num_supports = len(graph_data['diffusion_supports'])
+
+    model = DCRNN(
+        num_sensors=num_sensors,
+        num_supports=num_supports,
+        seq_len=config.SEQ_LEN,
+        pred_len=config.PRED_LEN,
+        hidden_dim=config.DCRNN_HIDDEN,
+        num_layers=config.DCRNN_LAYERS,
+    )
+
+    total_params = sum(p.numel() for p in model.parameters())
+    print(f"  Parameters: {total_params:,}")
+
+    history = train_model(
+        model, data_prepared['loaders']['train'],
+        data_prepared['loaders']['val'],
+        config, 'dcrnn', dataset_name,
+        graph_data=graph_data,
+    )
+
+    predictions, ground_truth = predict_model(
+        model, data_prepared['loaders']['test'], config, 'dcrnn',
+        graph_data=graph_data,
+    )
+
+    results = evaluate_predictions(predictions, ground_truth, mean, std)
+    print_results(results, model.get_name())
+    return results, predictions, history
+
+
+def run_gnn_on_dataset(dataset_name):
+    """Run all GNN models on a single dataset."""
+    print(f"\n{'#'*60}")
+    print(f"  GNN MODELS — {dataset_name}")
+    print(f"{'#'*60}\n")
+
+    filepath = config.DATASETS[dataset_name]['path']
+
+    data_prepared = prepare_dataset(
+        filepath,
+        seq_len=config.SEQ_LEN,
+        pred_len=config.PRED_LEN,
+        train_ratio=config.TRAIN_RATIO,
+        val_ratio=config.VAL_RATIO,
+        batch_size=config.BATCH_SIZE,
+    )
+
+    mean = data_prepared['mean']
+    std = data_prepared['std']
+
+    # Build graph from training data
+    train_end = int(len(data_prepared['raw_data']) * config.TRAIN_RATIO)
+    train_raw = data_prepared['raw_data'][:train_end]
+
+    graph_data = build_graph(
+        train_raw,
+        sigma=config.GRAPH_SIGMA,
+        epsilon=config.GRAPH_EPSILON,
+        K_cheb=config.STGCN_K,
+        K_diff=config.DIFFUSION_STEPS,
+    )
+
+    all_results = {}
+    all_preds = {}
+    histories = {}
+
+    # 1. STGCN
+    try:
+        results, preds, history = run_stgcn(
+            data_prepared, graph_data, dataset_name, mean, std
+        )
+        all_results['STGCN'] = results
+        all_preds['STGCN'] = preds
+        histories['STGCN'] = history
+    except Exception as e:
+        print(f"  STGCN failed: {e}")
+        import traceback; traceback.print_exc()
+
+    # 2. DCRNN
+    try:
+        results, preds, history = run_dcrnn(
+            data_prepared, graph_data, dataset_name, mean, std
+        )
+        all_results['DCRNN'] = results
+        all_preds['DCRNN'] = preds
+        histories['DCRNN'] = history
+    except Exception as e:
+        print(f"  DCRNN failed: {e}")
+        import traceback; traceback.print_exc()
+
+    # Save results
+    save_results(
+        all_results,
+        os.path.join(config.RESULTS_DIR, 'metrics'),
+        dataset_name + '_gnn'
+    )
+
+    return all_results, all_preds, histories, data_prepared, graph_data
+
+
+def main():
+    parser = argparse.ArgumentParser(description='Run GNN models')
+    parser.add_argument('--dataset', type=str, default='METR-LA',
+                        choices=['METR-LA', 'PEMS-BAY', 'both'])
+    args = parser.parse_args()
+
+    set_seed()
+    device = config.get_device()
+
+    datasets = ['METR-LA', 'PEMS-BAY'] if args.dataset == 'both' else [args.dataset]
+
+    for ds in datasets:
+        run_gnn_on_dataset(ds)
+
+
+if __name__ == '__main__':
+    main()
