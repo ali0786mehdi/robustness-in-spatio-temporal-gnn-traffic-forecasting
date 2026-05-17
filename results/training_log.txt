@@ -1,0 +1,49 @@
+Using GPU: NVIDIA GeForce RTX 4060
+GPU Memory: 8.2 GB
+
+######################################################################
+  FULL PIPELINE — METR-LA
+######################################################################
+
+Loading /home/anonymous/GraphNN/dataset/METR-LA.csv...
+  Shape: (34272, 207) (timesteps × sensors)
+  Time range: 2012-03-01 00:00:00 to 2012-06-27 23:55:00
+  Missing values: 0 (0.00%)
+  Zero values: 575302 (8.11%)
+Handling missing values...
+  After cleaning — NaN: 0, Zeros: 0
+Creating sequences...
+  Created 34249 sequences: X=(34249, 12, 207), Y=(34249, 12, 207)
+Splitting data...
+  train: 23974 samples
+  val: 3425 samples
+  test: 6850 samples
+Building graph from sensor correlations...
+  Adjacency matrix: 207x207
+  Non-zero entries: 447 / 42849
+  Sparsity: 98.96%
+  Avg connections per node: 2.2
+  Computing Chebyshev polynomials...
+  Computing diffusion matrices...
+Graph construction complete.
+
+
+>>> Running ARIMA...
+Fitting ARIMA(3, 0, 1) on 30 sensors...
+ARIMA fitting:   0%|          | 0/30 [00:00<?, ?it/s]ARIMA fitting:   3%|▎         | 1/30 [00:15<07:28, 15.46s/it]ARIMA fitting:   7%|▋         | 2/30 [00:31<07:14, 15.52s/it]ARIMA fitting:  10%|█         | 3/30 [00:46<06:59, 15.54s/it]ARIMA fitting:  13%|█▎        | 4/30 [01:00<06:23, 14.74s/it]ARIMA fitting:  17%|█▋        | 5/30 [01:10<05:27, 13.09s/it]ARIMA fitting:  20%|██        | 6/30 [01:23<05:15, 13.16s/it]ARIMA fitting:  23%|██▎       | 7/30 [01:37<05:09, 13.44s/it]ARIMA fitting:  27%|██▋       | 8/30 [01:48<04:40, 12.75s/it]ARIMA fitting:  30%|███       | 9/30 [02:04<04:43, 13.50s/it]ARIMA fitting:  33%|███▎      | 10/30 [02:21<04:53, 14.69s/it]ARIMA fitting:  37%|███▋      | 11/30 [02:33<04:24, 13.94s/it]ARIMA fitting:  40%|████      | 12/30 [02:40<03:32, 11.83s/it]ARIMA fitting:  43%|████▎     | 13/30 [03:06<04:31, 15.99s/it]ARIMA fitting:  47%|████▋     | 14/30 [03:18<03:57, 14.83s/it]ARIMA fitting:  50%|█████     | 15/30 [03:29<03:26, 13.73s/it]ARIMA fitting:  53%|█████▎    | 16/30 [03:45<03:20, 14.30s/it]ARIMA fitting:  57%|█████▋    | 17/30 [04:01<03:13, 14.87s/it]ARIMA fitting:  60%|██████    | 18/30 [04:14<02:51, 14.33s/it]ARIMA fitting:  63%|██████▎   | 19/30 [04:35<02:59, 16.31s/it]ARIMA fitting:  67%|██████▋   | 20/30 [04:52<02:44, 16.45s/it]ARIMA fitting:  70%|███████   | 21/30 [05:04<02:18, 15.34s/it]ARIMA fitting:  73%|███████▎  | 22/30 [05:16<01:54, 14.30s/it]ARIMA fitting:  77%|███████▋  | 23/30 [05:33<01:45, 15.10s/it]ARIMA fitting:  80%|████████  | 24/30 [05:46<01:27, 14.56s/it]ARIMA fitting:  83%|████████▎ | 25/30 [05:59<01:09, 13.98s/it]ARIMA fitting:  87%|████████▋ | 26/30 [06:13<00:56, 14.07s/it]ARIMA fitting:  90%|█████████ | 27/30 [06:25<00:40, 13.37s/it]ARIMA fitting:  93%|█████████▎| 28/30 [06:37<00:25, 12.85s/it]ARIMA fitting:  97%|█████████▋| 29/30 [06:47<00:12, 12.20s/it]ARIMA fitting: 100%|██████████| 30/30 [07:03<00:00, 13.10s/it]ARIMA fitting: 100%|██████████| 30/30 [07:03<00:00, 14.10s/it]
+
+============================================================
+  Results: ARIMA(3, 0, 1)
+============================================================
+  Horizon           MAE     RMSE  MAPE(%)
+  ----------------------------------------
+  15min          3.2883   6.4587     8.32
+  30min          3.8798   7.7344    10.23
+  60min          4.8878   9.6374    13.38
+  overall        3.9208   7.8619    10.33
+============================================================
+
+
+>>> Running Random Forest...
+Training Random Forest (trees=100, depth=15, subsampled 50000/4962618)...
+RF horizons:   0%|          | 0/12 [00:00<?, ?it/s]RF horizons:   8%|▊         | 1/12 [00:03<00:42,  3.86s/it]RF horizons:  17%|█▋        | 2/12 [00:07<00:38,  3.82s/it]RF horizons:  25%|██▌       | 3/12 [00:11<00:34,  3.83s/it]RF horizons:  33%|███▎      | 4/12 [00:15<00:30,  3.82s/it]RF horizons:  42%|████▏     | 5/12 [00:19<00:26,  3.81s/it]RF horizons:  50%|█████     | 6/12 [00:22<00:22,  3.83s/it]RF horizons:  58%|█████▊    | 7/12 [00:26<00:19,  3.83s/it]RF horizons:  67%|██████▋   | 8/12 [00:30<00:15,  3.90s/it]RF horizons:  75%|███████▌  | 9/12 [00:34<00:11,  3.95s/it]RF horizons:  83%|████████▎ | 10/12 [00:39<00:08,  4.01s/it]RF horizons:  92%|█████████▏| 11/12 [00:42<00:03,  3.96s/it]RF horizons: 100%|██████████| 12/12 [00:46<00:00,  3.99s/it]RF horizons: 100%|██████████| 12/12 [00:46<00:00,  3.91s/it]
