@@ -154,9 +154,10 @@ def run_lstm(data_prepared, dataset_name, mean, std):
         config, 'lstm', dataset_name,
     )
 
-    predictions, ground_truth = predict_model(
+    predictions, ground_truth, latency = predict_model(
         model, data_prepared['loaders']['test'], config, 'lstm',
     )
+    history['efficiency']['inference_latency_ms'] = latency
 
     results = evaluate_predictions(predictions, ground_truth, mean, std)
     print_results(results, model.get_name())

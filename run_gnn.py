@@ -46,10 +46,11 @@ def run_stgcn(data_prepared, graph_data, dataset_name, mean, std):
         graph_data=graph_data,
     )
 
-    predictions, ground_truth = predict_model(
+    predictions, ground_truth, latency = predict_model(
         model, data_prepared['loaders']['test'], config, 'stgcn',
         graph_data=graph_data,
     )
+    history['efficiency']['inference_latency_ms'] = latency
 
     results = evaluate_predictions(predictions, ground_truth, mean, std)
     print_results(results, model.get_name())
@@ -86,10 +87,11 @@ def run_dcrnn(data_prepared, graph_data, dataset_name, mean, std):
         graph_data=graph_data,
     )
 
-    predictions, ground_truth = predict_model(
+    predictions, ground_truth, latency = predict_model(
         model, data_prepared['loaders']['test'], config, 'dcrnn',
         graph_data=graph_data,
     )
+    history['efficiency']['inference_latency_ms'] = latency
 
     results = evaluate_predictions(predictions, ground_truth, mean, std)
     print_results(results, model.get_name())
