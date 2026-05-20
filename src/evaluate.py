@@ -109,6 +109,22 @@ def save_results(all_results, save_dir, dataset_name):
     print(f"Results saved to {save_path}")
 
 
+def save_efficiency(histories, save_dir, dataset_name):
+    """
+    Extract efficiency metrics from histories and save to JSON.
+    """
+    efficiency_data = {}
+    for model_name, hist in histories.items():
+        if 'efficiency' in hist:
+            efficiency_data[model_name] = hist['efficiency']
+            
+    if efficiency_data:
+        save_path = os.path.join(save_dir, f"{dataset_name}_efficiency.json")
+        with open(save_path, 'w') as f:
+            json.dump(efficiency_data, f, indent=2)
+        print(f"Efficiency metrics saved to {save_path}")
+
+
 def load_results(save_dir, dataset_name):
     """Load results from JSON."""
     save_path = os.path.join(save_dir, f"{dataset_name}_results.json")

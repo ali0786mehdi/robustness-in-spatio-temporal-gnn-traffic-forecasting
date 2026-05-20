@@ -16,7 +16,7 @@ from src.config import set_seed
 from src.data_loader import prepare_dataset
 from src.graph_builder import build_graph
 from src.evaluate import (
-    evaluate_predictions, print_results, save_results, compare_models
+    evaluate_predictions, print_results, save_results, compare_models, save_efficiency
 )
 from src.train import train_model, predict_model
 from src.visualize import generate_all_plots
@@ -122,8 +122,9 @@ def run_full_pipeline(dataset_name):
         history = train_model(lstm, data_prepared['loaders']['train'],
                               data_prepared['loaders']['val'], config,
                               'lstm', dataset_name)
-        preds, gt = predict_model(lstm, data_prepared['loaders']['test'],
+        preds, gt, latency = predict_model(lstm, data_prepared['loaders']['test'],
                                   config, 'lstm')
+        history['efficiency']['inference_latency_ms'] = latency
         results = evaluate_predictions(preds, gt, mean, std)
         print_results(results, lstm.get_name())
         all_results['LSTM'] = results
@@ -147,8 +148,9 @@ def run_full_pipeline(dataset_name):
         history = train_model(stgcn, data_prepared['loaders']['train'],
                               data_prepared['loaders']['val'], config,
                               'stgcn', dataset_name, graph_data=graph_data)
-        preds, gt = predict_model(stgcn, data_prepared['loaders']['test'],
+        preds, gt, latency = predict_model(stgcn, data_prepared['loaders']['test'],
                                   config, 'stgcn', graph_data=graph_data)
+        history['efficiency']['inference_latency_ms'] = latency
         results = evaluate_predictions(preds, gt, mean, std)
         print_results(results, stgcn.get_name())
         all_results['STGCN'] = results
@@ -173,8 +175,9 @@ def run_full_pipeline(dataset_name):
         history = train_model(dcrnn, data_prepared['loaders']['train'],
                               data_prepared['loaders']['val'], config,
                               'dcrnn', dataset_name, graph_data=graph_data)
-        preds, gt = predict_model(dcrnn, data_prepared['loaders']['test'],
+        preds, gt, latency = predict_model(dcrnn, data_prepared['loaders']['test'],
                                   config, 'dcrnn', graph_data=graph_data)
+        history['efficiency']['inference_latency_ms'] = latency
         results = evaluate_predictions(preds, gt, mean, std)
         print_results(results, dcrnn.get_name())
         all_results['DCRNN'] = results
@@ -188,8 +191,9 @@ def run_full_pipeline(dataset_name):
     compare_models(all_results, dataset_name)
 
     # Save all results
-    save_results(all_results, os.path.join(config.RESULTS_DIR, 'metrics'),
-                 dataset_name + '_all')
+    metrics_dir = os.path.join(config.RESULTS_DIR, 'metrics')
+    save_results(all_results, metrics_dir, dataset_name + '_all')
+    save_efficiency(histories, metrics_dir, dataset_name + '_all')
 
     # Generate plots
     generate_all_plots(

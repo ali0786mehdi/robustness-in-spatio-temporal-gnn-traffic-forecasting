@@ -14,7 +14,7 @@ from src import config
 from src.config import set_seed
 from src.data_loader import prepare_dataset
 from src.graph_builder import build_graph
-from src.evaluate import evaluate_predictions, print_results, save_results
+from src.evaluate import evaluate_predictions, print_results, save_results, save_efficiency
 from src.train import train_model, predict_model
 
 
@@ -159,11 +159,9 @@ def run_gnn_on_dataset(dataset_name):
         import traceback; traceback.print_exc()
 
     # Save results
-    save_results(
-        all_results,
-        os.path.join(config.RESULTS_DIR, 'metrics'),
-        dataset_name + '_gnn'
-    )
+    metrics_dir = os.path.join(config.RESULTS_DIR, 'metrics')
+    save_results(all_results, metrics_dir, dataset_name + '_gnn')
+    save_efficiency(histories, metrics_dir, dataset_name + '_gnn')
 
     return all_results, all_preds, histories, data_prepared, graph_data
 
