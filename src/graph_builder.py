@@ -166,7 +166,7 @@ def compute_diffusion_matrices(adj, K=2):
     return supports
 
 
-def build_graph(data, sigma=0.1, epsilon=0.3, K_cheb=3, K_diff=2):
+def build_graph(data, sigma=0.1, epsilon=0.3, K_cheb=3, K_diff=2, ablation=None):
     """
     Build complete graph structures from TRAIN DATA ONLY to prevent spatial data leakage.
     
@@ -180,6 +180,7 @@ def build_graph(data, sigma=0.1, epsilon=0.3, K_cheb=3, K_diff=2):
         epsilon (float): Threshold for sparsifying the graph.
         K_cheb (int): Order of Chebyshev polynomials.
         K_diff (int): Number of diffusion steps.
+        ablation (str): Optional. 'random' or 'identity' to override graph.
 
     Returns:
         dict: Dictionary containing:
@@ -188,10 +189,21 @@ def build_graph(data, sigma=0.1, epsilon=0.3, K_cheb=3, K_diff=2):
             - 'cheb_polys': Chebyshev polynomials for STGCN
             - 'diffusion_supports': Diffusion matrices for DCRNN
     """
-    print("Building graph from sensor correlations...")
-
-    # Step 1: Compute adjacency matrix
-    adj = compute_correlation_adj(data, sigma=sigma, epsilon=epsilon)
+    if ablation:
+        print(f"Building ABLATION graph: {ablation.upper()}...")
+        num_sensors = data.shape[1]
+        if ablation == 'identity':
+            adj = np.eye(num_sensors)
+        elif ablation == 'random':
+            rand_mat = np.random.rand(num_sensors, num_sensors)
+            adj = (rand_mat + rand_mat.T) / 2  # Make symmetric
+            np.fill_diagonal(adj, 1.0)         # Add self-loops
+        else:
+            raise ValueError("ablation must be 'identity' or 'random'")
+    else:
+        print("Building graph from sensor correlations...")
+        # Step 1: Compute adjacency matrix
+        adj = compute_correlation_adj(data, sigma=sigma, epsilon=epsilon)
 
     # Step 2: Symmetric normalization (for STGCN)
     adj_sym = symmetric_normalize(adj)

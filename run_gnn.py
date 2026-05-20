@@ -98,14 +98,14 @@ def run_dcrnn(data_prepared, graph_data, dataset_name, mean, std):
     return results, predictions, history
 
 
-def run_gnn_on_dataset(dataset_name):
+def run_gnn_on_dataset(dataset_name, ablation=None):
     """Run all GNN models on a single dataset."""
     print(f"\n{'#'*60}")
-    print(f"  GNN MODELS — {dataset_name}")
+    print(f"  GNN MODELS — {dataset_name}" + (f" [ABLATION: {ablation.upper()}]" if ablation else ""))
     print(f"{'#'*60}\n")
-
+    
     filepath = config.DATASETS[dataset_name]['path']
-
+    
     data_prepared = prepare_dataset(
         filepath,
         seq_len=config.SEQ_LEN,
@@ -114,20 +114,18 @@ def run_gnn_on_dataset(dataset_name):
         val_ratio=config.VAL_RATIO,
         batch_size=config.BATCH_SIZE,
     )
-
+    
     mean = data_prepared['mean']
     std = data_prepared['std']
-
-    # Build graph from training data
-    train_end = int(len(data_prepared['raw_data']) * config.TRAIN_RATIO)
-    train_raw = data_prepared['raw_data'][:train_end]
-
+    
+    # Pass train_raw to build_graph
     graph_data = build_graph(
-        train_raw,
+        data_prepared['train_raw'],
         sigma=config.GRAPH_SIGMA,
         epsilon=config.GRAPH_EPSILON,
         K_cheb=config.STGCN_K,
         K_diff=config.DIFFUSION_STEPS,
+        ablation=ablation
     )
 
     all_results = {}
@@ -160,8 +158,9 @@ def run_gnn_on_dataset(dataset_name):
 
     # Save results
     metrics_dir = os.path.join(config.RESULTS_DIR, 'metrics')
-    save_results(all_results, metrics_dir, dataset_name + '_gnn')
-    save_efficiency(histories, metrics_dir, dataset_name + '_gnn')
+    save_name = dataset_name + f"_gnn{'_' + ablation if ablation else ''}"
+    save_results(all_results, metrics_dir, save_name)
+    save_efficiency(histories, metrics_dir, save_name)
 
     return all_results, all_preds, histories, data_prepared, graph_data
 
@@ -170,6 +169,9 @@ def main():
     parser = argparse.ArgumentParser(description='Run GNN models')
     parser.add_argument('--dataset', type=str, default='METR-LA',
                         choices=['METR-LA', 'PEMS-BAY', 'both'])
+    parser.add_argument('--ablation', type=str, default=None,
+                        choices=['random', 'identity'],
+                        help='Override graph with random or identity matrix for ablation study')
     args = parser.parse_args()
 
     set_seed()
@@ -178,7 +180,7 @@ def main():
     datasets = ['METR-LA', 'PEMS-BAY'] if args.dataset == 'both' else [args.dataset]
 
     for ds in datasets:
-        run_gnn_on_dataset(ds)
+        run_gnn_on_dataset(ds, ablation=args.ablation)
 
 
 if __name__ == '__main__':

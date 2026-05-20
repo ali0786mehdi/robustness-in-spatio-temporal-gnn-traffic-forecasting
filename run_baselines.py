@@ -119,6 +119,11 @@ def run_random_forest(splits, dataset_name, mean, std):
     )
 
     model.fit(train_X, train_Y)
+    
+    save_path = os.path.join(config.RESULTS_DIR, "models", f"rf_{dataset_name}_best.pkl")
+    model.save(save_path)
+    print(f"  Saved RF model to {save_path}")
+    
     predictions = model.predict(test_X)
 
     results = evaluate_predictions(predictions, test_Y, mean, std)

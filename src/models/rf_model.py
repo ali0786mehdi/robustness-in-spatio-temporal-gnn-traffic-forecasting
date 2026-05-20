@@ -5,6 +5,7 @@ Optimized: subsamples training data for speed.
 """
 
 import numpy as np
+import pickle
 from sklearn.ensemble import RandomForestRegressor
 from tqdm import tqdm
 
@@ -106,3 +107,13 @@ class RandomForestForecaster:
 
     def get_name(self):
         return f"RandomForest(n={self.n_estimators})"
+        
+    def save(self, filepath):
+        """Save models to disk."""
+        with open(filepath, 'wb') as f:
+            pickle.dump(self.models, f)
+            
+    def load(self, filepath):
+        """Load models from disk."""
+        with open(filepath, 'rb') as f:
+            self.models = pickle.load(f)
