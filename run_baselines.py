@@ -95,6 +95,10 @@ def run_arima(splits, dataset_name, mean, std):
     predictions = model.fit_and_predict(
         train_series, test_X, pred_len=config.PRED_LEN
     )
+    
+    # Save fitted ARIMA params for reuse (e.g. robustness tests)
+    arima_save = os.path.join(config.RESULTS_DIR, "models", f"arima_{dataset_name}_best.pkl")
+    model.save(arima_save)
 
     results = evaluate_predictions(predictions, test_Y, mean, std)
     print_results(results, model.get_name())

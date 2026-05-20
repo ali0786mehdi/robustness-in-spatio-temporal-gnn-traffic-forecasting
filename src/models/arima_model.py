@@ -1,8 +1,10 @@
 """
 ARIMA baseline model for traffic forecasting.
-Efficient approach: fits once per sensor, uses last-value + fitted trend for prediction.
+Efficient approach: fits once per sensor on training data, stores params,
+then predicts independently for any (possibly corrupted) test input.
 """
 
+import pickle
 import numpy as np
 from statsmodels.tsa.arima.model import ARIMA
 from tqdm import tqdm
@@ -14,95 +16,135 @@ warnings.filterwarnings("ignore")
 class ARIMAForecaster:
     """
     ARIMA baseline for traffic speed forecasting.
-    Fits one ARIMA per sensor on training data.
-    For test: uses each test input's last seq_len values to produce forecast.
+    Fits one ARIMA per sensor on training data. Stores fitted params.
+    Predict can then be called repeatedly on any (possibly corrupted) test_X.
     """
 
     def __init__(self, order=(3, 0, 1), max_sensors=None):
         self.order = order
         self.max_sensors = max_sensors
-        self.fitted_params = {}
+        self.fitted_params = {}   # sensor_idx -> np.ndarray of ARIMA params
         self.sensor_indices = None
+        self.pred_len = None
 
-    def fit_and_predict(self, train_data, test_X, pred_len=12):
+    def fit(self, train_data, pred_len=12):
         """
-        Fit ARIMA on training data per sensor, then batch-predict for test.
-
-        Efficient strategy:
-        1. Fit ARIMA once per sensor on training data → store params.
-        2. For test: use each sample's input as history, apply stored params
-           via filter(), and forecast pred_len steps.
-        3. Process test in batches of 100 for speed.
+        Fit ARIMA models for each sensor on training data.
+        Stores fitted params for fast repeated prediction.
 
         Args:
-            train_data: Full training time series, shape (T_train, N).
-            test_X: Test input sequences, shape (num_test, seq_len, N).
-            pred_len: Steps to predict ahead.
-
-        Returns:
-            Predictions, shape (num_test, pred_len, N).
+            train_data: shape (T_train, N)
+            pred_len:   number of steps to forecast
         """
-        num_test, seq_len, num_sensors = test_X.shape
+        num_sensors = train_data.shape[1]
+        self.pred_len = pred_len
 
         if self.max_sensors and self.max_sensors < num_sensors:
             np.random.seed(42)
-            self.sensor_indices = np.random.choice(
-                num_sensors, self.max_sensors, replace=False
+            self.sensor_indices = np.sort(
+                np.random.choice(num_sensors, self.max_sensors, replace=False)
             )
-            self.sensor_indices.sort()
         else:
             self.sensor_indices = np.arange(num_sensors)
 
-        # Initialize with last-value (naive) prediction
-        predictions = np.zeros((num_test, pred_len, num_sensors))
-        for t in range(num_test):
-            predictions[t] = np.tile(test_X[t, -1, :], (pred_len, 1))
-
         print(f"Fitting ARIMA{self.order} on {len(self.sensor_indices)} sensors...")
 
-        for sensor_idx in tqdm(self.sensor_indices, desc="ARIMA fitting"):
+        for sensor_idx in tqdm(self.sensor_indices, desc="ARIMA fit"):
             sensor_train = train_data[:, sensor_idx]
-
             try:
-                # Fit once on training data
                 model = ARIMA(sensor_train, order=self.order,
                               enforce_stationarity=False,
                               enforce_invertibility=False)
                 fitted = model.fit(method_kwargs={"maxiter": 100})
-                params = fitted.params
-
-                # Use a subsample of test for speed (every 10th)
-                # Then interpolate for others
-                test_indices = list(range(0, num_test, max(1, num_test // 200)))
-                if num_test - 1 not in test_indices:
-                    test_indices.append(num_test - 1)
-
-                forecasts = {}
-                for t in test_indices:
-                    history = test_X[t, :, sensor_idx]
-                    try:
-                        m = ARIMA(history, order=self.order,
-                                  enforce_stationarity=False,
-                                  enforce_invertibility=False)
-                        res = m.filter(params)
-                        forecasts[t] = res.forecast(steps=pred_len)
-                    except Exception:
-                        forecasts[t] = np.full(pred_len, history[-1])
-
-                # Fill predictions — for non-sampled indices, use nearest
-                sorted_indices = sorted(forecasts.keys())
-                for t in range(num_test):
-                    if t in forecasts:
-                        predictions[t, :, sensor_idx] = forecasts[t]
-                    else:
-                        # Find nearest sampled index
-                        nearest = min(sorted_indices, key=lambda x: abs(x - t))
-                        predictions[t, :, sensor_idx] = forecasts[nearest]
-
+                self.fitted_params[sensor_idx] = fitted.params
             except Exception:
-                pass  # Keep naive prediction
+                self.fitted_params[sensor_idx] = None  # Will fall back to persistence
+
+        print(f"  ARIMA fitted on {len(self.fitted_params)} sensors.")
+
+    def predict(self, test_X):
+        """
+        Generate predictions for a (possibly corrupted) test set.
+        Uses stored fitted params — no re-fitting required.
+
+        Args:
+            test_X: shape (num_test, seq_len, N)
+
+        Returns:
+            predictions: shape (num_test, pred_len, N)
+        """
+        if not self.fitted_params:
+            raise RuntimeError("ARIMAForecaster must be fit() before predict().")
+
+        num_test, seq_len, num_sensors = test_X.shape
+        pred_len = self.pred_len
+
+        # Initialize with last-value (naive) as fallback
+        predictions = np.zeros((num_test, pred_len, num_sensors))
+        for t in range(num_test):
+            predictions[t] = np.tile(test_X[t, -1, :], (pred_len, 1))
+
+        for sensor_idx in self.sensor_indices:
+            params = self.fitted_params.get(sensor_idx)
+            if params is None:
+                continue  # Keep naive prediction
+
+            # Subsample test for speed (sample ~200 points, interpolate rest)
+            test_indices = list(range(0, num_test, max(1, num_test // 200)))
+            if num_test - 1 not in test_indices:
+                test_indices.append(num_test - 1)
+
+            forecasts = {}
+            for t in test_indices:
+                history = test_X[t, :, sensor_idx]
+                try:
+                    m = ARIMA(history, order=self.order,
+                              enforce_stationarity=False,
+                              enforce_invertibility=False)
+                    res = m.filter(params)
+                    forecasts[t] = res.forecast(steps=pred_len)
+                except Exception:
+                    forecasts[t] = np.full(pred_len, history[-1])
+
+            # Fill non-sampled indices with nearest sampled forecast
+            sorted_indices = sorted(forecasts.keys())
+            for t in range(num_test):
+                if t in forecasts:
+                    predictions[t, :, sensor_idx] = forecasts[t]
+                else:
+                    nearest = min(sorted_indices, key=lambda x: abs(x - t))
+                    predictions[t, :, sensor_idx] = forecasts[nearest]
 
         return predictions
+
+    # ── Convenience wrapper (backward compatible) ─────────────────────────────
+    def fit_and_predict(self, train_data, test_X, pred_len=12):
+        """Fit then predict in one call. Backward compatible with run_baselines.py."""
+        self.fit(train_data, pred_len=pred_len)
+        return self.predict(test_X)
+
+    # ── Persistence ───────────────────────────────────────────────────────────
+    def save(self, filepath):
+        """Pickle the fitted params to disk."""
+        with open(filepath, 'wb') as f:
+            pickle.dump({
+                'order': self.order,
+                'max_sensors': self.max_sensors,
+                'fitted_params': self.fitted_params,
+                'sensor_indices': self.sensor_indices,
+                'pred_len': self.pred_len,
+            }, f)
+        print(f"  ARIMA params saved to {filepath}")
+
+    def load(self, filepath):
+        """Load fitted params from disk."""
+        with open(filepath, 'rb') as f:
+            state = pickle.load(f)
+        self.order = state['order']
+        self.max_sensors = state['max_sensors']
+        self.fitted_params = state['fitted_params']
+        self.sensor_indices = state['sensor_indices']
+        self.pred_len = state['pred_len']
 
     def get_name(self):
         return f"ARIMA{self.order}"
