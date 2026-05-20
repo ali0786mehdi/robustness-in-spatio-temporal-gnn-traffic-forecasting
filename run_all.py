@@ -20,6 +20,9 @@ from src.evaluate import (
 )
 from src.train import train_model, predict_model
 from src.visualize import generate_all_plots
+from src.interpretability import (
+    plot_adjacency_heatmap, plot_spatial_error_heatmap, plot_congestion_propagation
+)
 from run_baselines import run_sanity
 
 
@@ -196,6 +199,7 @@ def run_full_pipeline(dataset_name):
     save_efficiency(histories, metrics_dir, dataset_name + '_all')
 
     # Generate plots
+    plot_dir = os.path.join(config.RESULTS_DIR, 'plots')
     generate_all_plots(
         all_results=all_results,
         preds_dict=all_preds,
@@ -205,8 +209,21 @@ def run_full_pipeline(dataset_name):
         adj=graph_data['adj'],
         histories=histories,
         dataset_name=dataset_name,
-        save_dir=os.path.join(config.RESULTS_DIR, 'plots'),
+        save_dir=plot_dir,
     )
+    
+    # Generate Interpretability Plots
+    print("\nGenerating Interpretability Plots...")
+    plot_adjacency_heatmap(graph_data['adj'], plot_dir, dataset_name)
+    
+    # Error heatmaps for GNNs
+    if 'STGCN' in all_preds:
+        plot_spatial_error_heatmap(all_preds['STGCN'], test_Y, plot_dir, dataset_name, 'STGCN')
+    if 'DCRNN' in all_preds:
+        plot_spatial_error_heatmap(all_preds['DCRNN'], test_Y, plot_dir, dataset_name, 'DCRNN')
+        
+    # Congestion propagation case study
+    plot_congestion_propagation(all_preds, test_Y, data_prepared['timestamps'], plot_dir, dataset_name)
 
     return all_results
 
