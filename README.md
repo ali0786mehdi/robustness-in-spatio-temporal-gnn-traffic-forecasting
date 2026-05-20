@@ -80,36 +80,27 @@ Both CSVs should be placed in the `dataset/` folder (already included).
 
 ## 🚀 How to Train & Get Results
 
-### Option 1: Run everything at once
+Following our research strategy:
+* **Classical Baselines** (ARIMA, Random Forest, LSTM) are trained and evaluated on **both** datasets (METR-LA and PEMS-BAY) to provide complete cross-dataset coverage and consistency with prior work.
+* **Graph Neural Network Models** (STGCN, DCRNN) are trained and evaluated **only on PEMS-BAY**, which is the larger, harder, and more representative benchmark. This limits high computational overhead while keeping the GNN analysis robust.
 
+### Running Baselines (METR-LA & PEMS-BAY)
+
+To run the classical baselines on both datasets:
 ```bash
-# Run all 5 models on METR-LA (recommended to start with)
-python run_all.py --dataset METR-LA
-
-# Run all 5 models on PEMS-BAY
-python run_all.py --dataset PEMS-BAY
-
-# Run on both datasets
-python run_all.py --dataset both
-```
-
-This will:
-1. Load and preprocess the dataset
-2. Build the correlation-based graph (adjacency matrix)
-3. Train ARIMA, Random Forest, LSTM, STGCN, DCRNN
-4. Evaluate all models (MAE, RMSE, MAPE at 15/30/60 min horizons)
-5. Print comparison tables
-6. Generate all plots in `results/plots/`
-7. Save metrics to `results/metrics/`
-
-### Option 2: Run models separately
-
-```bash
-# Only traditional baselines (ARIMA, RF, LSTM)
+# Run ARIMA, RF, LSTM on METR-LA
 python run_baselines.py --dataset METR-LA
 
-# Only GNN models (STGCN, DCRNN)
-python run_gnn.py --dataset METR-LA
+# Run ARIMA, RF, LSTM on PEMS-BAY
+python run_baselines.py --dataset PEMS-BAY
+```
+
+### Running Graph Neural Networks (PEMS-BAY Only)
+
+To train and evaluate GNN models on the primary benchmark:
+```bash
+# Run STGCN and DCRNN on PEMS-BAY
+python run_gnn.py --dataset PEMS-BAY
 ```
 
 ---
@@ -121,11 +112,12 @@ python run_gnn.py --dataset METR-LA
 | ARIMA | ~10 min | ~15 min |
 | Random Forest | ~1 min | ~2 min |
 | LSTM | ~5 min | ~8 min |
-| STGCN | ~5 min | ~10 min |
-| DCRNN | ~10 min | ~20 min |
-| **Total** | **~30 min** | **~55 min** |
+| STGCN | *N/A (Skipped)* | ~10 min |
+| DCRNN | *N/A (Skipped)* | ~20 min |
+| **Total** | **~16 min** | **~55 min** |
 
 > On CPU only: multiply deep model times by ~5–10x.
+
 
 ---
 
@@ -229,29 +221,27 @@ After training, you will find:
 
 ## 🔬 Research Workflow
 
-### For your paper, follow this order:
+### For your paper, follow this training order:
 
-1. **Run on METR-LA first** — smaller, faster, debug any issues
-2. **Run on PEMS-BAY** — confirm results generalize
-3. **Collect the comparison table** from console output or JSON
-4. **Use the generated plots** directly in your paper
-5. **Analyze**:
-   - Which model performs best at each horizon?
-   - How much does graph structure help? (STGCN/DCRNN vs LSTM)
-   - Where do traditional models fail? (peak hours, incidents)
-   - How does error grow with prediction horizon?
+1. **Verify with Baselines on METR-LA** — Run ARIMA, Random Forest, and LSTM on the smaller METR-LA dataset to ensure everything works smoothly.
+2. **Train Baselines on PEMS-BAY** — Run ARIMA, Random Forest, and LSTM on the larger PEMS-BAY dataset to establish complete benchmark coverage across both road networks.
+3. **Train GNNs on PEMS-BAY only** — Run STGCN and DCRNN on PEMS-BAY. This focuses your computational resources on the most challenging, representative benchmark (325 sensors vs 207).
+4. **Collect and Analyze** the comparative results. Use the generated plots and metrics to support your findings.
+
+### Writing Justification for Your Paper
+When writing the methodology or experimental setup in your paper, you can present this strategy as follows:
+> *"To ensure a broad and robust evaluation, we benchmark classical temporal baselines (ARIMA, Random Forest, LSTM) on both METR-LA and PEMS-BAY datasets. In contrast, due to their substantially higher computational overhead and spatial complexity, the spatio-temporal Graph Neural Network models (STGCN, DCRNN) are evaluated on PEMS-BAY, which serves as our primary, most representative, and computationally demanding benchmark."*
 
 ### Suggested Paper Structure
 
 | Chapter | Content |
 |---------|---------|
-| 1. Introduction | Traffic forecasting problem, why GNNs |
-| 2. Literature Review | ARIMA, ML, LSTM, GCN, STGCN, DCRNN |
-| 3. Methodology | Data preprocessing, graph construction, model architectures |
-| 4. Experiments | Dataset description, setup, hyperparameters |
-| 5. Results | Comparison tables, plots, analysis |
-| 6. Discussion | Why GNNs work better, limitations, failure cases |
-| 7. Conclusion | Summary, future work |
+| 1. Introduction | Traffic forecasting problem, why spatial-temporal GNNs are preferred over pure temporal models. |
+| 2. Literature Review | Traditional forecasting (ARIMA), machine learning (Random Forest), deep learning (LSTM), and GNNs (STGCN, DCRNN). |
+| 3. Methodology | Data cleaning, Z-score normalization, sequence generation, correlation-based graph construction, and model architectures. |
+| 4. Experimental Setup | Dataset descriptions, train/val/test splits, configuration details, and computational resource allocation strategy. |
+| 5. Results & Discussion | Model comparison tables across horizons, error growth analysis, GNN performance improvement margins. |
+| 6. Conclusion | Summary of findings, model strengths/weaknesses, and directions for future research. |
 
 ---
 
