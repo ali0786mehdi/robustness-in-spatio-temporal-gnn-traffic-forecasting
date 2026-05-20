@@ -168,14 +168,18 @@ def compute_diffusion_matrices(adj, K=2):
 
 def build_graph(data, sigma=0.1, epsilon=0.3, K_cheb=3, K_diff=2):
     """
-    Build all graph representations needed for the models.
+    Build complete graph structures from TRAIN DATA ONLY to prevent spatial data leakage.
+    
+    This function computes the correlation-based adjacency matrix, 
+    Chebyshev polynomials for STGCN, and diffusion supports for DCRNN.
 
     Args:
-        data (np.ndarray): Training data, shape (T, N).
-        sigma (float): Gaussian kernel bandwidth.
-        epsilon (float): Sparsity threshold.
-        K_cheb (int): Chebyshev polynomial order for STGCN.
-        K_diff (int): Diffusion steps for DCRNN.
+        data (np.ndarray): Raw training data, shape (T_train, N).
+                           MUST NOT contain any validation or test data!
+        sigma (float): Bandwidth for Gaussian kernel.
+        epsilon (float): Threshold for sparsifying the graph.
+        K_cheb (int): Order of Chebyshev polynomials.
+        K_diff (int): Number of diffusion steps.
 
     Returns:
         dict: Dictionary containing:

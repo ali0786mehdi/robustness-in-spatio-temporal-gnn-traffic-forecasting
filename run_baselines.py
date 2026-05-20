@@ -16,6 +16,53 @@ from src.data_loader import prepare_dataset
 from src.graph_builder import build_graph
 from src.evaluate import evaluate_predictions, print_results, save_results
 from src.train import train_model, predict_model
+from src.models.sanity_baselines import HistoricalAverageModel, PersistenceModel
+
+def run_sanity(data_prepared, dataset_name, mean, std):
+    """Run Persistence and Historical Average baselines."""
+    print(f"\n{'='*60}")
+    print(f"  SANITY BASELINES — {dataset_name}")
+    print(f"{'='*60}")
+    
+    test_X = data_prepared['splits']['test'][0]
+    test_Y = data_prepared['splits']['test'][1]
+    
+    # 1. Persistence
+    print("\n  Running Persistence (Copy-Last-Value)...")
+    pm = PersistenceModel(pred_len=config.PRED_LEN)
+    # Persistence takes denormalized input
+    test_X_dn = test_X * std + mean
+    preds_pm_dn = pm.predict(test_X_dn)
+    # We must evaluate using normalized space predictions or pass denormalized to evaluate
+    # evaluate_predictions automatically denormalizes, so we must feed it normalized preds
+    preds_pm = (preds_pm_dn - mean) / std
+    res_pm = evaluate_predictions(preds_pm, test_Y, mean, std)
+    print_results(res_pm, 'Persistence')
+    
+    # 2. Historical Average
+    print("\n  Running Historical Average...")
+    ha = HistoricalAverageModel()
+    ha.fit(data_prepared['train_raw'], data_prepared['timestamps'][:len(data_prepared['train_raw'])])
+    
+    # We need the timestamps corresponding to the start of each test sequence
+    # test_X starts at index len(train) + len(val)
+    T = len(data_prepared['raw_data'])
+    train_end = int(T * config.TRAIN_RATIO)
+    val_end = int(T * (config.TRAIN_RATIO + config.VAL_RATIO))
+    
+    # test_raw starts at val_end. 
+    # test sequences X starts at val_end. Y starts at val_end + seq_len.
+    test_start_idx = val_end + config.SEQ_LEN
+    test_timestamps = data_prepared['timestamps'][test_start_idx : test_start_idx + len(test_Y)]
+    
+    num_sensors = test_X.shape[2]
+    preds_ha_dn = ha.predict(test_timestamps, num_sensors, config.PRED_LEN)
+    preds_ha = (preds_ha_dn - mean) / std
+    res_ha = evaluate_predictions(preds_ha, test_Y, mean, std)
+    print_results(res_ha, 'HistoricalAverage')
+    
+    return {'Persistence': res_pm, 'HistoricalAverage': res_ha}, {'Persistence': preds_pm, 'HistoricalAverage': preds_ha}
+
 
 
 def run_arima(splits, dataset_name, mean, std):
@@ -140,6 +187,14 @@ def run_baselines_on_dataset(dataset_name):
     all_results = {}
     all_preds = {}
     histories = {}
+
+    # 0. Sanity Baselines
+    try:
+        s_results, s_preds = run_sanity(data_prepared, dataset_name, mean, std)
+        all_results.update(s_results)
+        all_preds.update(s_preds)
+    except Exception as e:
+        print(f"  Sanity baselines failed: {e}")
 
     # 1. ARIMA
     try:

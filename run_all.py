@@ -20,6 +20,7 @@ from src.evaluate import (
 )
 from src.train import train_model, predict_model
 from src.visualize import generate_all_plots
+from run_baselines import run_sanity
 
 
 def run_full_pipeline(dataset_name):
@@ -47,10 +48,8 @@ def run_full_pipeline(dataset_name):
     num_sensors = splits['train'][0].shape[2]
 
     # ====== Step 2: Build graph ======
-    train_end = int(len(data_prepared['raw_data']) * config.TRAIN_RATIO)
-    train_raw = data_prepared['raw_data'][:train_end]
     graph_data = build_graph(
-        train_raw,
+        data_prepared['train_raw'],
         sigma=config.GRAPH_SIGMA,
         epsilon=config.GRAPH_EPSILON,
         K_cheb=config.STGCN_K,
@@ -63,6 +62,15 @@ def run_full_pipeline(dataset_name):
     test_Y = splits['test'][1]  # Ground truth for all models
 
     # ====== Step 3: Traditional Baselines ======
+
+    # --- Sanity Baselines ---
+    try:
+        s_results, s_preds = run_sanity(data_prepared, dataset_name, mean, std)
+        all_results.update(s_results)
+        all_preds.update(s_preds)
+    except Exception as e:
+        print(f"Sanity baselines failed: {e}")
+        import traceback; traceback.print_exc()
 
     # --- ARIMA ---
     try:

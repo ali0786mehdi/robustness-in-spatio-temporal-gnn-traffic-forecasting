@@ -90,8 +90,7 @@ def validate_models(dataset_name="METR-LA"):
     test_Y = data['splits']['test'][1]
 
     # --- Graph ---
-    train_end = int(len(data['raw_data']) * config.TRAIN_RATIO)
-    graph = build_graph(data['raw_data'][:train_end],
+    graph = build_graph(data['train_raw'],
                         sigma=config.GRAPH_SIGMA, epsilon=config.GRAPH_EPSILON)
 
     models_dir = os.path.join(config.RESULTS_DIR, 'models')
@@ -336,8 +335,7 @@ def sanity_check(dataset_name="METR-LA"):
             failed += 1
 
     # Graph checks
-    train_end = int(len(raw) * config.TRAIN_RATIO)
-    graph = build_graph(raw[:train_end], sigma=config.GRAPH_SIGMA,
+    graph = build_graph(data['train_raw'], sigma=config.GRAPH_SIGMA,
                         epsilon=config.GRAPH_EPSILON)
     adj = graph['adj']
 

@@ -164,33 +164,28 @@ def create_sequences(data, seq_len=12, pred_len=12):
     return X, Y
 
 
-def split_data(X, Y, train_ratio=0.7, val_ratio=0.1):
+def split_data(data, train_ratio=0.7, val_ratio=0.1):
     """
-    Chronological train/val/test split.
+    Chronological train/val/test split on raw flat data.
 
     Args:
-        X (np.ndarray): Input sequences.
-        Y (np.ndarray): Target sequences.
+        data (np.ndarray): Data array, shape (T, N).
         train_ratio (float): Fraction for training.
         val_ratio (float): Fraction for validation.
 
     Returns:
-        dict: Dictionary with 'train', 'val', 'test' splits, each containing (X, Y).
+        tuple: (train_data, val_data, test_data)
     """
-    n = len(X)
-    train_end = int(n * train_ratio)
-    val_end = int(n * (train_ratio + val_ratio))
+    T = len(data)
+    train_end = int(T * train_ratio)
+    val_end = int(T * (train_ratio + val_ratio))
 
-    splits = {
-        "train": (X[:train_end], Y[:train_end]),
-        "val": (X[train_end:val_end], Y[train_end:val_end]),
-        "test": (X[val_end:], Y[val_end:]),
-    }
+    train_data = data[:train_end]
+    val_data = data[train_end:val_end]
+    test_data = data[val_end:]
 
-    for name, (x, y) in splits.items():
-        print(f"  {name}: {len(x)} samples")
-
-    return splits
+    print(f"  Raw splits - Train: {len(train_data)}, Val: {len(val_data)}, Test: {len(test_data)}")
+    return train_data, val_data, test_data
 
 
 def create_dataloaders(splits, batch_size=64):
@@ -223,7 +218,7 @@ def create_dataloaders(splits, batch_size=64):
 def prepare_dataset(filepath, seq_len=12, pred_len=12, train_ratio=0.7,
                     val_ratio=0.1, batch_size=64):
     """
-    Full data preparation pipeline.
+    Full data preparation pipeline with STRICT chronological splitting.
 
     Args:
         filepath (str): Path to CSV file.
@@ -236,9 +231,10 @@ def prepare_dataset(filepath, seq_len=12, pred_len=12, train_ratio=0.7,
     Returns:
         dict: Dictionary containing:
             - 'loaders': DataLoaders for train/val/test
-            - 'splits': Raw numpy splits
+            - 'splits': Sequence dict {'train': (X,Y), 'val': (X,Y), 'test': (X,Y)}
             - 'raw_data': Cleaned raw data (before normalization)
-            - 'norm_data': Normalized data
+            - 'train_raw': Raw training chunk (used for graphs/normalization)
+            - 'norm_data': Normalized data (full sequence)
             - 'mean': Per-sensor mean
             - 'std': Per-sensor std
             - 'sensor_ids': List of sensor IDs
@@ -251,30 +247,43 @@ def prepare_dataset(filepath, seq_len=12, pred_len=12, train_ratio=0.7,
     print("Handling missing values...")
     raw_data = handle_missing_values(raw_data)
 
-    # Normalize (compute stats only on training portion)
-    train_end = int(len(raw_data) * train_ratio)
-    train_data_raw = raw_data[:train_end]
-    mean = train_data_raw.mean(axis=0)
-    std = train_data_raw.std(axis=0)
+    # Split first to prevent sequence overlap leakage
+    print("Splitting data chunks...")
+    train_raw, val_raw, test_raw = split_data(raw_data, train_ratio, val_ratio)
+
+    # Normalize (compute stats ONLY on training portion)
+    print("Normalizing based on training stats...")
+    mean = train_raw.mean(axis=0)
+    std = train_raw.std(axis=0)
     std[std < 1e-5] = 1.0
 
-    norm_data = (raw_data - mean) / std
+    train_norm = (train_raw - mean) / std
+    val_norm = (val_raw - mean) / std
+    test_norm = (test_raw - mean) / std
 
-    # Create sequences
-    print("Creating sequences...")
-    X, Y = create_sequences(norm_data, seq_len, pred_len)
+    # Create sequences separately for each chunk to prevent boundary leakage
+    print("Creating strictly partitioned sequences...")
+    X_train, Y_train = create_sequences(train_norm, seq_len, pred_len)
+    X_val, Y_val = create_sequences(val_norm, seq_len, pred_len)
+    X_test, Y_test = create_sequences(test_norm, seq_len, pred_len)
 
-    # Split
-    print("Splitting data...")
-    splits = split_data(X, Y, train_ratio, val_ratio)
+    splits = {
+        "train": (X_train, Y_train),
+        "val": (X_val, Y_val),
+        "test": (X_test, Y_test)
+    }
 
     # DataLoaders
     loaders = create_dataloaders(splits, batch_size)
+
+    # Reconstruct fully normalized array just for returning 'norm_data' backward compatibility
+    norm_data = (raw_data - mean) / std
 
     return {
         "loaders": loaders,
         "splits": splits,
         "raw_data": raw_data,
+        "train_raw": train_raw,
         "norm_data": norm_data,
         "mean": mean,
         "std": std,
