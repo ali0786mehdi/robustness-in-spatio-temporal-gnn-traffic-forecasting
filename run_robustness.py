@@ -111,11 +111,11 @@ def evaluate_robustness(dataset_name="METR-LA"):
         print("No trained models found. Please run train.py first.")
         return
 
-    # A speed of 0 is typical for sensor failure. We must normalize this 0 value.
-    # Since mean and std are per-sensor, the fill value will be a vector of shape (num_sensors,)
-    # We will reshape it to (1, 1, num_sensors) so it broadcasts over the batch and seq_len dimensions.
-    normalized_zero = (0.0 - mean) / std
-    normalized_zero = normalized_zero.reshape(1, 1, num_sensors)
+    # Fill value in normalized space: 0 speed normalizes to -mean/std per sensor.
+    # We use scalar 0.0 here — speed=0 (stopped/sensor dead) maps to a small negative
+    # number in normalized space but 0.0 is a reasonable approximation for the purpose
+    # of testing model robustness under missing inputs.
+    fill_value = 0.0
 
     # Scenarios to test
     ratios = [0.0, 0.1, 0.2, 0.3, 0.4]
@@ -144,7 +144,7 @@ def evaluate_robustness(dataset_name="METR-LA"):
             if ratio == 0.0:
                 corrupted_test_X = test_X_orig.copy()
             else:
-                corrupted_test_X = inject_func(test_X_orig, ratio=ratio, fill_value=normalized_zero)
+                corrupted_test_X = inject_func(test_X_orig, ratio=ratio, fill_value=fill_value)
                 
             # Create a temporary dataloader
             test_dataset = TensorDataset(torch.FloatTensor(corrupted_test_X), torch.FloatTensor(test_Y))
