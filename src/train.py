@@ -152,6 +152,10 @@ def train_model(model, train_loader, val_loader, config, model_name,
         history['train_loss'].append(train_loss)
         history['val_loss'].append(val_loss)
         history['lr'].append(current_lr)
+        
+        if 'epoch_times' not in history:
+            history['epoch_times'] = []
+        history['epoch_times'].append(elapsed)
 
         # Print progress
         if (epoch + 1) % 5 == 0 or epoch == 0:
@@ -172,6 +176,17 @@ def train_model(model, train_loader, val_loader, config, model_name,
         print(f"  Loaded best model from {save_path}")
 
     print(f"  Best val loss: {early_stopping.best_loss:.6f}")
+
+    # --- Efficiency Metrics ---
+    param_count = sum(p.numel() for p in model.parameters())
+    peak_gpu = torch.cuda.max_memory_allocated(device) / (1024 ** 2) if device.type == 'cuda' else 0.0
+    avg_epoch_time = np.mean(history.get('epoch_times', []))
+    
+    history['efficiency'] = {
+        'param_count': param_count,
+        'peak_gpu_mb': peak_gpu,
+        'train_time_per_epoch_s': avg_epoch_time,
+    }
 
     return history
 
@@ -209,22 +224,46 @@ def predict_model(model, test_loader, config, model_name, graph_data=None):
 
     all_preds = []
     all_targets = []
+    inference_times = []
 
     with torch.no_grad():
+        # Warmup for more accurate GPU timing
+        warmup_batches = 3
+        for i, (batch_x, batch_y) in enumerate(test_loader):
+            if i >= warmup_batches:
+                break
+            batch_x = batch_x.to(device)
+            if model_name == 'stgcn':
+                _ = model(batch_x, cheb_polys_tensor)
+            elif model_name == 'dcrnn':
+                _ = model(batch_x, supports_tensor)
+            else:
+                _ = model(batch_x)
+
+        if device.type == 'cuda':
+            torch.cuda.synchronize()
+
         for batch_x, batch_y in test_loader:
             batch_x = batch_x.to(device)
-
+            
+            t_start = time.time()
             if model_name == 'stgcn':
                 pred = model(batch_x, cheb_polys_tensor)
             elif model_name == 'dcrnn':
                 pred = model(batch_x, supports_tensor)
             else:
                 pred = model(batch_x)
+                
+            if device.type == 'cuda':
+                torch.cuda.synchronize()
+            inference_times.append(time.time() - t_start)
 
             all_preds.append(pred.cpu().numpy())
             all_targets.append(batch_y.numpy())
 
     predictions = np.concatenate(all_preds, axis=0)
     ground_truth = np.concatenate(all_targets, axis=0)
+    
+    avg_latency_ms = np.mean(inference_times) * 1000.0
 
-    return predictions, ground_truth
+    return predictions, ground_truth, avg_latency_ms
