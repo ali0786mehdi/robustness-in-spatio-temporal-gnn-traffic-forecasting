@@ -1,6 +1,12 @@
 venv/
 __pycache__/
 *.pyc
-dataset/
+
 results/models/
-results/models/
+*.pkl
+*.pt
+*.pth
+
+dataset/*.csv
+
+.ipynb_checkpoints/
