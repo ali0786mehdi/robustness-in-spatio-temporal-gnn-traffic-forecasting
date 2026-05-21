@@ -1,12 +1,44 @@
+# ── Python ───────────────────────────────────────────────────────────────────
 venv/
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
 
+# ── Jupyter ───────────────────────────────────────────────────────────────────
+.ipynb_checkpoints/
+*.ipynb
+
+# ── Dataset files (too large for git) ────────────────────────────────────────
+dataset/*.csv
+dataset/*.h5
+
+# ── Trained model checkpoints ────────────────────────────────────────────────
 results/models/
-*.pkl
 *.pt
 *.pth
+*.pkl
 
-dataset/*.csv
+# ── Cached graph arrays (regenerated at runtime) ──────────────────────────────
+results/*.npy
+*.npy
 
-.ipynb_checkpoints/
+# ── Training logs (ephemeral, regenerated each run) ──────────────────────────
+results/training_log*.txt
+results/*.txt
+*.log
+
+# ── IDE / OS ──────────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# ── What SHOULD be committed ──────────────────────────────────────────────────
+# results/metrics/*.json    → experiment metrics (keep, small)
+# results/plots/*.png       → generated figures (keep, for paper)
+# requirements.txt          → keep
