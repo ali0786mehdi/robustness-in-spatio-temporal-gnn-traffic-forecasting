@@ -98,10 +98,13 @@ def run_dcrnn(data_prepared, graph_data, dataset_name, mean, std):
     return results, predictions, history
 
 
-def run_gnn_on_dataset(dataset_name, ablation=None):
+def run_gnn_on_dataset(dataset_name, ablation=None, max_epochs=None):
     """Run all GNN models on a single dataset."""
     print(f"\n{'#'*60}")
     print(f"  GNN MODELS — {dataset_name}" + (f" [ABLATION: {ablation.upper()}]" if ablation else ""))
+    if max_epochs is not None:
+        config.EPOCHS = max_epochs
+        print(f"  [Epochs overridden: {max_epochs}]")
     print(f"{'#'*60}\n")
     
     filepath = config.DATASETS[dataset_name]['path']
@@ -172,6 +175,8 @@ def main():
     parser.add_argument('--ablation', type=str, default=None,
                         choices=['random', 'identity'],
                         help='Override graph with random or identity matrix for ablation study')
+    parser.add_argument('--epochs', type=int, default=None,
+                        help='Override number of training epochs (e.g. 30 for quick ablations)')
     args = parser.parse_args()
 
     set_seed()
@@ -180,7 +185,7 @@ def main():
     datasets = ['METR-LA', 'PEMS-BAY'] if args.dataset == 'both' else [args.dataset]
 
     for ds in datasets:
-        run_gnn_on_dataset(ds, ablation=args.ablation)
+        run_gnn_on_dataset(ds, ablation=args.ablation, max_epochs=args.epochs)
 
 
 if __name__ == '__main__':
