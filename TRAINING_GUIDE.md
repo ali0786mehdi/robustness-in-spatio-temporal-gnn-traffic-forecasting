@@ -181,6 +181,26 @@ Saves to: `results/plots/`
 
 ---
 
+### Step 10b — Regenerate Paper Assets (~1 min)
+
+This regenerates all LaTeX tables and CSV summaries with the NEW metrics from retraining.  
+**You MUST run this after retraining — otherwise the tables will have the old (wrong) numbers.**
+
+```bash
+python generate_paper_assets.py
+```
+
+Saves to: `results/paper_assets/`
+- `table_main_results.tex` — updated model comparison table
+- `table_robustness.tex` — updated robustness table (mean ± std)
+- `main_results.csv` — machine-readable results
+- `robustness_random_missing.csv` — updated robustness data
+- `robustness_sensor_failure.csv` — updated sensor failure data
+- `hyperparameters.md` — config documentation
+- `reproducibility_checklist.md` — validation checklist
+
+---
+
 ### Step 11 — Validate Everything
 
 ```bash
@@ -195,13 +215,13 @@ All checkpoints should show as found. All metrics should load successfully.
 ### Step 12 — Push Results to GitHub
 
 ```bash
-git add results/metrics/ results/plots/
+git add results/metrics/ results/plots/ results/paper_assets/
 git commit -m "results: full clean retrain on METR-LA and PEMS-BAY"
 git push
 ```
 
 > Do NOT `git add results/models/` — model weights are gitignored.
-> Only `results/metrics/*.json` and `results/plots/*.png` go to GitHub.
+> Only `results/metrics/`, `results/plots/`, and `results/paper_assets/` go to GitHub.
 
 ---
 
@@ -219,6 +239,7 @@ git push
 | 8 | Sparsity analysis | ~25 min |
 | 9a | Identity ablation | ~5 hrs |
 | 9b | Random ablation | ~5 hrs |
+| 10b | **Paper assets** | **~1 min** |
 | **Total** | | **~24–26 hrs** |
 
 Steps 1–8 are the core results: **~14–16 hrs**  
@@ -236,4 +257,6 @@ Steps 9a–9b are ablations (optional but recommended): **+10 hrs**
 | `run_robustness.py` | No | `metrics/*_robustness.json` |
 | `run_sparsity_analysis.py` | No | `metrics/*_sparsity_analysis.json` |
 | `plot_robustness.py` | No | `plots/*_robustness_curves.png` |
+| `generate_paper_assets.py` | No | `paper_assets/*.tex, *.csv, *.md` |
 | `validate.py` | No | Console output only |
+
