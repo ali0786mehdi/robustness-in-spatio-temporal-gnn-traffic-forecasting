@@ -98,7 +98,8 @@ def run_dcrnn(data_prepared, graph_data, dataset_name, mean, std):
     return results, predictions, history
 
 
-def run_gnn_on_dataset(dataset_name, ablation=None, max_epochs=None):
+def run_gnn_on_dataset(dataset_name, ablation=None, max_epochs=None,
+                       models=('stgcn', 'dcrnn')):
     """Run all GNN models on a single dataset."""
     print(f"\n{'#'*60}")
     print(f"  GNN MODELS — {dataset_name}" + (f" [ABLATION: {ablation.upper()}]" if ablation else ""))
@@ -136,28 +137,30 @@ def run_gnn_on_dataset(dataset_name, ablation=None, max_epochs=None):
     histories = {}
 
     # 1. STGCN
-    try:
-        results, preds, history = run_stgcn(
-            data_prepared, graph_data, dataset_name, mean, std
-        )
-        all_results['STGCN'] = results
-        all_preds['STGCN'] = preds
-        histories['STGCN'] = history
-    except Exception as e:
-        print(f"  STGCN failed: {e}")
-        import traceback; traceback.print_exc()
+    if 'stgcn' in models:
+        try:
+            results, preds, history = run_stgcn(
+                data_prepared, graph_data, dataset_name, mean, std
+            )
+            all_results['STGCN'] = results
+            all_preds['STGCN'] = preds
+            histories['STGCN'] = history
+        except Exception as e:
+            print(f"  STGCN failed: {e}")
+            import traceback; traceback.print_exc()
 
     # 2. DCRNN
-    try:
-        results, preds, history = run_dcrnn(
-            data_prepared, graph_data, dataset_name, mean, std
-        )
-        all_results['DCRNN'] = results
-        all_preds['DCRNN'] = preds
-        histories['DCRNN'] = history
-    except Exception as e:
-        print(f"  DCRNN failed: {e}")
-        import traceback; traceback.print_exc()
+    if 'dcrnn' in models:
+        try:
+            results, preds, history = run_dcrnn(
+                data_prepared, graph_data, dataset_name, mean, std
+            )
+            all_results['DCRNN'] = results
+            all_preds['DCRNN'] = preds
+            histories['DCRNN'] = history
+        except Exception as e:
+            print(f"  DCRNN failed: {e}")
+            import traceback; traceback.print_exc()
 
     # Save results
     metrics_dir = os.path.join(config.RESULTS_DIR, 'metrics')
@@ -177,15 +180,20 @@ def main():
                         help='Override graph with random or identity matrix for ablation study')
     parser.add_argument('--epochs', type=int, default=None,
                         help='Override number of training epochs (e.g. 30 for quick ablations)')
+    parser.add_argument('--model', type=str, default='both',
+                        choices=['stgcn', 'dcrnn', 'both'],
+                        help='Which GNN to train (default: both)')
     args = parser.parse_args()
 
     set_seed()
     device = config.get_device()
 
+    models = ('stgcn', 'dcrnn') if args.model == 'both' else (args.model,)
     datasets = ['METR-LA', 'PEMS-BAY'] if args.dataset == 'both' else [args.dataset]
 
     for ds in datasets:
-        run_gnn_on_dataset(ds, ablation=args.ablation, max_epochs=args.epochs)
+        run_gnn_on_dataset(ds, ablation=args.ablation,
+                           max_epochs=args.epochs, models=models)
 
 
 if __name__ == '__main__':
