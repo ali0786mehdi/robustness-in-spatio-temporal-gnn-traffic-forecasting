@@ -93,7 +93,6 @@ def validate_models(dataset_name="METR-LA"):
     graph = build_graph(data['train_raw'],
                         sigma=config.GRAPH_SIGMA, epsilon=config.GRAPH_EPSILON)
 
-    models_dir = os.path.join(config.RESULTS_DIR, 'models')
     all_results = {}
 
     # --- 1. Load baseline results from JSON ---
@@ -110,7 +109,7 @@ def validate_models(dataset_name="METR-LA"):
         print(f"  ⚠ No baseline results: {baselines_path}")
 
     # --- 2. Load & evaluate LSTM ---
-    ckpt = os.path.join(models_dir, f'lstm_{dataset_name}_best.pt')
+    ckpt = config.get_model_path('lstm', dataset_name)
     if os.path.exists(ckpt):
         from src.models.lstm_model import LSTMModel
         model = LSTMModel(num_sensors, config.SEQ_LEN, config.PRED_LEN,
@@ -124,7 +123,7 @@ def validate_models(dataset_name="METR-LA"):
         print(f"  ⚠ LSTM checkpoint not found")
 
     # --- 3. Load & evaluate STGCN ---
-    ckpt = os.path.join(models_dir, f'stgcn_{dataset_name}_best.pt')
+    ckpt = config.get_model_path('stgcn', dataset_name)
     if os.path.exists(ckpt):
         from src.models.stgcn import STGCN
         model = STGCN(num_sensors, config.SEQ_LEN, config.PRED_LEN,
@@ -140,7 +139,7 @@ def validate_models(dataset_name="METR-LA"):
         print(f"  ⚠ STGCN checkpoint not found")
 
     # --- 4. Load & evaluate DCRNN ---
-    ckpt = os.path.join(models_dir, f'dcrnn_{dataset_name}_best.pt')
+    ckpt = config.get_model_path('dcrnn', dataset_name)
     if os.path.exists(ckpt):
         from src.models.dcrnn import DCRNN
         n_sup = len(graph['diffusion_supports'])
@@ -361,11 +360,10 @@ def sanity_check(dataset_name="METR-LA"):
 
     # Checkpoint existence
     print()
-    models_dir = os.path.join(config.RESULTS_DIR, 'models')
     for mname in ['lstm', 'stgcn', 'dcrnn']:
-        ckpt = os.path.join(models_dir, f'{mname}_{dataset_name}_best.pt')
+        ckpt   = config.get_model_path(mname, dataset_name)
         exists = os.path.exists(ckpt)
-        size = os.path.getsize(ckpt) / 1024 if exists else 0
+        size   = os.path.getsize(ckpt) / 1024 if exists else 0
         if exists:
             print(f"  ✓ {mname.upper()} checkpoint exists ({size:.0f} KB)")
             passed += 1

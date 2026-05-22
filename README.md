@@ -1,8 +1,9 @@
-# Traffic Forecasting: GNN vs Traditional Models
+# Robustness in Spatio-Temporal GNN Traffic Forecasting
 
-**A Comparative Study of Traditional Machine Learning Models and Graph Neural Networks for Traffic Speed Prediction**
+**A comparative benchmark of traditional ML and Graph Neural Networks for traffic speed prediction, with robustness analysis and graph topology ablation.**
 
-> Research project comparing ARIMA, Random Forest, LSTM (temporal-only models) against STGCN and DCRNN (spatio-temporal graph models) on real-world traffic sensor datasets.
+> Models: Persistence · Historical Average · ARIMA · Random Forest · LSTM · STGCN · DCRNN  
+> Datasets: METR-LA (207 sensors) · PEMS-BAY (325 sensors)
 
 ---
 
@@ -14,257 +15,199 @@ GraphNN/
 │   ├── METR-LA.csv              # Los Angeles traffic (207 sensors, 34K timesteps)
 │   └── PEMS-BAY.csv             # Bay Area traffic (325 sensors, 52K timesteps)
 ├── src/
-│   ├── config.py                # All hyperparameters & paths
-│   ├── data_loader.py           # CSV loading, normalization, sequences
-│   ├── graph_builder.py         # Adjacency matrix from correlations
-│   ├── evaluate.py              # MAE, RMSE, MAPE metrics
+│   ├── config.py                # All hyperparameters, paths, get_model_path()
+│   ├── data_loader.py           # CSV loading, normalization, sequence creation
+│   ├── graph_builder.py         # Correlation-based adjacency matrix
+│   ├── evaluate.py              # MAE, RMSE, MAPE per horizon
 │   ├── train.py                 # Training loop (early stopping, LR schedule)
-│   ├── visualize.py             # All plots and charts
+│   ├── robustness.py            # Corruption injection (random missing, sensor failure)
 │   └── models/
-│       ├── arima_model.py       # ARIMA baseline (statistical)
-│       ├── rf_model.py          # Random Forest baseline (ML)
-│       ├── lstm_model.py        # LSTM baseline (deep learning)
-│       ├── stgcn.py             # STGCN — Graph Conv + Temporal Conv
-│       └── dcrnn.py             # DCRNN — Diffusion Conv + GRU
+│       ├── sanity_baselines.py  # Persistence, Historical Average
+│       ├── arima_model.py       # ARIMA (fit/predict/save/load)
+│       ├── rf_model.py          # Random Forest (save/load)
+│       ├── lstm_model.py        # Univariate LSTM per sensor
+│       ├── stgcn.py             # STGCN — Chebyshev graph conv + temporal conv
+│       └── dcrnn.py             # DCRNN — Bidirectional diffusion conv + GRU
 ├── results/
-│   ├── metrics/                 # Saved JSON results
-│   ├── models/                  # Saved model checkpoints (.pt)
-│   └── plots/                   # Generated visualization plots
-├── run_baselines.py             # Run ARIMA + RF + LSTM
-├── run_gnn.py                   # Run STGCN + DCRNN
-├── run_all.py                   # Run everything + comparison + plots
-├── requirements.txt             # Python dependencies
-└── README.md                    # This file
+│   ├── metrics/                 # Saved JSON results (committed to git)
+│   ├── plots/                   # Generated figures (committed to git)
+│   └── models/
+│       ├── gnn_models/
+│       │   ├── stgcn/           # stgcn_<dataset>_best.pt
+│       │   └── dcrnn/           # dcrnn_<dataset>_best.pt
+│       └── baseline_models/     # lstm/arima/rf checkpoints
+├── run_baselines.py             # Train ARIMA + RF + LSTM
+├── run_gnn.py                   # Train STGCN + DCRNN (with ablation support)
+├── run_robustness.py            # Multi-seed robustness experiment (no retraining)
+├── run_sparsity_analysis.py     # Graph spectral analysis (no retraining)
+├── run_sparsity_ablation.py     # Graph sparsity training ablation
+├── run_cross_dataset.py         # Cross-dataset transfer experiment
+├── plot_robustness.py           # Robustness curves with ±1σ error bands
+├── plot_sparsity_ablation.py    # 4-panel sparsity figure
+├── validate.py                  # Full pipeline sanity check
+└── requirements.txt             # Python dependencies
 ```
 
 ---
 
-## 🔧 Installation
-
-### 1. Create virtual environment
+## ⚙️ Setup
 
 ```bash
-cd GraphNN
+# Create and activate virtual environment
 python3 -m venv venv
 source venv/bin/activate
-```
 
-### 2. Install dependencies
-
-```bash
+# Install dependencies
 pip install -r requirements.txt
 ```
 
-**Dependencies:** PyTorch ≥ 2.0, NumPy, Pandas, Scikit-learn, Statsmodels, Matplotlib, Seaborn, SciPy, tqdm
+---
 
-### 3. Verify installation
+## 🚀 Training — Run in This Order
+
+### Step 1: Baseline Models (fast, ~30–60 min total)
 
 ```bash
-python -c "import torch; print(f'PyTorch {torch.__version__}, CUDA: {torch.cuda.is_available()}')"
+# METR-LA
+python -u run_baselines.py --dataset METR-LA
+
+# PEMS-BAY
+python -u run_baselines.py --dataset PEMS-BAY
 ```
 
-> **Note:** GPU (CUDA) is recommended for STGCN and DCRNN training. CPU works but will be significantly slower.
+Trains: ARIMA (slow, ~20 min), Random Forest, LSTM.  
+Saves to: `results/models/baseline_models/`
 
 ---
 
-## 📊 Datasets
+### Step 2: GNN Models (slow, GPU required)
 
-| Dataset | Sensors | Timesteps | Interval | Duration | Feature |
-|---------|---------|-----------|----------|----------|---------|
-| **METR-LA** | 207 | 34,272 | 5 min | Mar–Jun 2012 | Speed (mph) |
-| **PEMS-BAY** | 325 | 52,116 | 5 min | Jan–May 2017 | Speed (mph) |
+> ⚠️ Run each separately. Each takes ~2.5 hrs on RTX 4060 (early stop ~epoch 35).
 
-Both CSVs should be placed in the `dataset/` folder (already included).
-
----
-
-## 🚀 How to Train & Get Results
-
-Following our research strategy:
-* **Classical Baselines** (ARIMA, Random Forest, LSTM) are trained and evaluated on **both** datasets (METR-LA and PEMS-BAY) to provide complete cross-dataset coverage and consistency with prior work.
-* **Graph Neural Network Models** (STGCN, DCRNN) are trained and evaluated **only on PEMS-BAY**, which is the larger, harder, and more representative benchmark. This limits high computational overhead while keeping the GNN analysis robust.
-
-### Running Baselines (METR-LA & PEMS-BAY)
-
-To run the classical baselines on both datasets:
 ```bash
-# Run ARIMA, RF, LSTM on METR-LA
-python run_baselines.py --dataset METR-LA
+# METR-LA — STGCN first (faster, early stops)
+python -u run_gnn.py --dataset METR-LA --model stgcn
 
-# Run ARIMA, RF, LSTM on PEMS-BAY
-python run_baselines.py --dataset PEMS-BAY
+# METR-LA — DCRNN (slower, runs full epochs)
+python -u run_gnn.py --dataset METR-LA --model dcrnn
+
+# PEMS-BAY (already trained — skip unless checkpoints are missing)
+# python -u run_gnn.py --dataset PEMS-BAY
 ```
 
-### Running Graph Neural Networks (PEMS-BAY Only)
+Saves to: `results/models/gnn_models/stgcn/` and `gnn_models/dcrnn/`
 
-To train and evaluate GNN models on the primary benchmark:
+> **Important**: Never use `--ablation` without `--model` — ablation results save to separate files  
+> (e.g. `stgcn_METR-LA_ablation_random_best.pt`) and never overwrite production checkpoints.
+
+---
+
+### Step 3: Robustness Experiment (no retraining, ~15–20 min)
+
 ```bash
-# Run STGCN and DCRNN on PEMS-BAY
-python run_gnn.py --dataset PEMS-BAY
+python -u run_robustness.py --dataset METR-LA --n-seeds 5
+```
+
+Loads all trained models, evaluates under 0–40% corruption across 5 random seeds.  
+Outputs `mean ± std MAE` per model per corruption ratio.  
+Saves to: `results/metrics/METR-LA_robustness.json`
+
+---
+
+### Step 4: Graph Sparsity Analysis (no retraining, ~25 min)
+
+```bash
+python -u run_sparsity_analysis.py
+```
+
+Computes spectral properties (λ₂, noise ratio, degree distribution) at ε ∈ {0.1, 0.2, 0.3, 0.5}.  
+No training required. Saves JSON + 6-panel figure.
+
+---
+
+### Step 5: Generate All Plots
+
+```bash
+python plot_robustness.py        # Robustness curves with ±1σ error bands
+python plot_sparsity_ablation.py # Sparsity analysis figure (if results exist)
+```
+
+Saves to: `results/plots/`
+
+---
+
+### Step 6: Validate Everything
+
+```bash
+python validate.py --dataset METR-LA
+python validate.py --dataset PEMS-BAY
+```
+
+Runs full sanity checks: data splits, normalization, graph integrity, checkpoint existence.
+
+---
+
+## 🔬 Ablation Studies
+
+### Graph Structure Ablation (random / identity graph)
+
+```bash
+# Identity graph — no spatial edges (each sensor sees only itself)
+python -u run_gnn.py --dataset METR-LA --ablation identity --model stgcn
+
+# Random graph — same sparsity, random edges
+python -u run_gnn.py --dataset METR-LA --ablation random --model stgcn
+```
+
+Results save to `results/metrics/METR-LA_gnn_ablation_<type>.json`.  
+Checkpoints save to `gnn_models/stgcn/stgcn_METR-LA_ablation_<type>_best.pt` (separate from main).
+
+### Cross-Dataset Transfer
+
+```bash
+python run_cross_dataset.py --source PEMS-BAY --target METR-LA
 ```
 
 ---
 
-## ⏱️ Expected Training Times (RTX 4060, 8GB)
+## 📊 Key Results (METR-LA, Multi-Seed Robustness)
 
-| Model | METR-LA | PEMS-BAY |
-|-------|---------|----------|
-| ARIMA | ~10 min | ~15 min |
-| Random Forest | ~1 min | ~2 min |
-| LSTM | ~5 min | ~8 min |
-| STGCN | *N/A (Skipped)* | ~10 min |
-| DCRNN | *N/A (Skipped)* | ~20 min |
-| **Total** | **~16 min** | **~55 min** |
+| Model | MAE (clean) | MAE @40% missing | Degradation |
+|---|---|---|---|
+| Persistence | 3.856 | 4.970 ± 0.003 | +28.9% |
+| Hist. Average | 5.120 | 5.120 ± 0.000 | 0% (immune) |
+| ARIMA | 3.914 | 4.988 ± 0.008 | +27.4% |
+| Random Forest | 3.758 | 4.897 ± 0.002 | +30.3% |
+| LSTM | 3.721 | 4.878 ± 0.001 | +31.1% |
+| **STGCN** | 3.744 | **4.584 ± 0.003** | **+22.4%** |
+| DCRNN | 4.948 | 5.421 ± 0.001 | +9.6%* |
 
-> On CPU only: multiply deep model times by ~5–10x.
-
-
----
-
-## ⚙️ Configuration
-
-All hyperparameters are in **`src/config.py`**. Key settings you may want to adjust:
-
-```python
-# Data split
-TRAIN_RATIO = 0.7       # 70% training
-VAL_RATIO = 0.1         # 10% validation
-TEST_RATIO = 0.2        # 20% testing
-
-# Sequence parameters
-SEQ_LEN = 12            # Input: 12 steps = 1 hour
-PRED_LEN = 12           # Predict: 12 steps = 1 hour ahead
-
-# Training
-BATCH_SIZE = 64
-LEARNING_RATE = 1e-3
-EPOCHS = 100
-PATIENCE = 15            # Early stopping
-
-# Graph construction
-GRAPH_SIGMA = 0.1        # Gaussian kernel bandwidth
-GRAPH_EPSILON = 0.3      # Sparsity threshold
-
-# ARIMA
-ARIMA_MAX_SENSORS = 30   # Fit ARIMA on subset for speed
-
-# Random Forest
-RF_N_ESTIMATORS = 100
-RF_MAX_DEPTH = 15
-```
+*DCRNN checkpoint is currently from ablation run — needs retraining (Step 2).
 
 ---
 
-## 📈 Evaluation Metrics
+## 🗂 Graph Topology Findings (No Retraining)
 
-All metrics are computed on **de-normalized** predictions (actual speed in mph).
+| ε | Edges | Avg Conn | Isolated % | λ₂ (Fiedler) | Noise Ratio |
+|---|---|---|---|---|---|
+| 0.1 | 424 | 0.83 | 33.8% | 0.292 | 4.95 |
+| 0.2 | 308 | 0.75 | 39.6% | 0.288 | 5.08 |
+| **0.3** (default) | 240 | 0.67 | 48.3% | **0.294** | 5.12 |
+| 0.5 | 148 | 0.49 | 59.9% | 0.329 | 4.77 |
 
-| Metric | Formula | Description |
-|--------|---------|-------------|
-| **MAE** | mean(\|y - ŷ\|) | Mean Absolute Error |
-| **RMSE** | √mean((y - ŷ)²) | Root Mean Squared Error |
-| **MAPE** | mean(\|y - ŷ\| / \|y\|) × 100 | Mean Absolute Percentage Error |
-
-Results are reported at three horizons (standard in traffic forecasting):
-- **15 min** (3 steps ahead)
-- **30 min** (6 steps ahead)
-- **60 min** (12 steps ahead)
-
----
-
-## 🏗️ Model Architectures
-
-### Traditional Baselines (No Graph Structure)
-
-| Model | Type | How It Works |
-|-------|------|-------------|
-| **ARIMA(3,0,1)** | Statistical | Per-sensor univariate time series model |
-| **Random Forest** | ML | Lagged values as features, one RF per horizon |
-| **LSTM** | Deep Learning | Shared multi-layer LSTM across all sensors |
-
-### Graph Neural Networks (Uses Road Network Structure)
-
-| Model | Spatial | Temporal | Paper |
-|-------|---------|----------|-------|
-| **STGCN** | Chebyshev Graph Conv | Gated 1D Temporal Conv | Yu et al., 2018 |
-| **DCRNN** | Diffusion Graph Conv | GRU (Seq2Seq) | Li et al., 2018 |
-
-### Key Difference
-
-- **Traditional models** learn from time patterns only (each sensor independently or jointly)
-- **GNN models** also learn from the **spatial graph structure** — how sensors are connected on the road network — capturing traffic propagation patterns
-
----
-
-## 📊 Output Files
-
-After training, you will find:
-
-### `results/metrics/`
-- `METR-LA_all_results.json` — All model metrics in JSON format
-- Can be loaded for custom analysis
-
-### `results/models/`
-- `lstm_METR-LA_best.pt` — Best LSTM checkpoint
-- `stgcn_METR-LA_best.pt` — Best STGCN checkpoint
-- `dcrnn_METR-LA_best.pt` — Best DCRNN checkpoint
-
-### `results/plots/`
-- `METR-LA_comparison.png` — Bar chart comparing all models
-- `METR-LA_horizons.png` — Error vs prediction horizon
-- `METR-LA_pred_sensor0.png` — Prediction vs ground truth
-- `METR-LA_adjacency.png` — Graph adjacency heatmap
-- `METR-LA_training.png` — Training/validation loss curves
-- `METR-LA_STGCN_spatial.png` — Per-sensor error distribution
-
----
-
-## 🔬 Research Workflow
-
-### For your paper, follow this training order:
-
-1. **Verify with Baselines on METR-LA** — Run ARIMA, Random Forest, and LSTM on the smaller METR-LA dataset to ensure everything works smoothly.
-2. **Train Baselines on PEMS-BAY** — Run ARIMA, Random Forest, and LSTM on the larger PEMS-BAY dataset to establish complete benchmark coverage across both road networks.
-3. **Train GNNs on PEMS-BAY only** — Run STGCN and DCRNN on PEMS-BAY. This focuses your computational resources on the most challenging, representative benchmark (325 sensors vs 207).
-4. **Collect and Analyze** the comparative results. Use the generated plots and metrics to support your findings.
-
-### Writing Justification for Your Paper
-When writing the methodology or experimental setup in your paper, you can present this strategy as follows:
-> *"To ensure a broad and robust evaluation, we benchmark classical temporal baselines (ARIMA, Random Forest, LSTM) on both METR-LA and PEMS-BAY datasets. In contrast, due to their substantially higher computational overhead and spatial complexity, the spatio-temporal Graph Neural Network models (STGCN, DCRNN) are evaluated on PEMS-BAY, which serves as our primary, most representative, and computationally demanding benchmark."*
-
-### Suggested Paper Structure
-
-| Chapter | Content |
-|---------|---------|
-| 1. Introduction | Traffic forecasting problem, why spatial-temporal GNNs are preferred over pure temporal models. |
-| 2. Literature Review | Traditional forecasting (ARIMA), machine learning (Random Forest), deep learning (LSTM), and GNNs (STGCN, DCRNN). |
-| 3. Methodology | Data cleaning, Z-score normalization, sequence generation, correlation-based graph construction, and model architectures. |
-| 4. Experimental Setup | Dataset descriptions, train/val/test splits, configuration details, and computational resource allocation strategy. |
-| 5. Results & Discussion | Model comparison tables across horizons, error growth analysis, GNN performance improvement margins. |
-| 6. Conclusion | Summary of findings, model strengths/weaknesses, and directions for future research. |
+> Even at ε=0.1 (~3× more edges), 1/3 of sensors remain isolated. Algebraic connectivity λ₂ barely changes, suggesting the correlation-based graph provides limited spatial signal regardless of threshold.
 
 ---
 
 ## 🔁 Reproducibility
 
-- **Random seed**: Fixed at 42 (configurable in `config.py`)
-- **Data splits**: Chronological (no random shuffle)
-- **Early stopping**: Prevents overfitting
-- **All hyperparameters**: Documented in `config.py`
+```bash
+# Fixed seed set in all scripts
+set_seed(42)  # src/config.py
 
----
+# Robustness variance is over corruption realizations, not model weights
+# Seeds [0..4] used for corruption injection → reports mean ± std
+```
 
-## 📚 References
-
-- **STGCN**: Yu, B., Yin, H., & Zhu, Z. (2018). *Spatio-Temporal Graph Convolutional Networks: A Deep Learning Framework for Traffic Forecasting.* IJCAI 2018.
-- **DCRNN**: Li, Y., Yu, R., Shahabi, C., & Liu, Y. (2018). *Diffusion Convolutional Recurrent Neural Network: Data-Driven Traffic Forecasting.* ICLR 2018.
-- **METR-LA / PEMS-BAY**: Li, Y., et al. (2018). Same as DCRNN paper.
-
----
-
-## 💡 Tips
-
-- If you run out of GPU memory, reduce `BATCH_SIZE` in `config.py` (try 32 or 16)
-- If ARIMA is too slow, reduce `ARIMA_MAX_SENSORS` (default: 30)
-- To skip ARIMA entirely, comment out the ARIMA block in `run_all.py`
-- For faster experiments, reduce `EPOCHS` to 50
+All metrics JSON files are committed to git. Model weights are gitignored (too large).  
+To reproduce from scratch: follow Steps 1–6 above.
