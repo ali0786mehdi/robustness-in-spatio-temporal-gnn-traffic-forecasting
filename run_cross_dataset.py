@@ -25,7 +25,7 @@ from src.train import predict_model
 def load_temporal_model(model_name, source_dataset, num_sensors):
     """Load a trained temporal model."""
     if model_name == 'lstm':
-        save_path = os.path.join(config.RESULTS_DIR, "models", f"lstm_{source_dataset}_best.pt")
+        save_path = config.get_model_path('lstm', source_dataset)
         if not os.path.exists(save_path):
             return None
             
@@ -44,7 +44,7 @@ def load_temporal_model(model_name, source_dataset, num_sensors):
         return model
         
     elif model_name == 'rf':
-        save_path = os.path.join(config.RESULTS_DIR, "models", f"rf_{source_dataset}_best.pkl")
+        save_path = config.get_model_path('rf', source_dataset)
         if not os.path.exists(save_path):
             return None
             

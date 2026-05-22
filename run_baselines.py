@@ -97,7 +97,7 @@ def run_arima(splits, dataset_name, mean, std):
     )
     
     # Save fitted ARIMA params for reuse (e.g. robustness tests)
-    arima_save = os.path.join(config.RESULTS_DIR, "models", f"arima_{dataset_name}_best.pkl")
+    arima_save = config.get_model_path('arima', dataset_name)
     model.save(arima_save)
 
     results = evaluate_predictions(predictions, test_Y, mean, std)
@@ -124,7 +124,7 @@ def run_random_forest(splits, dataset_name, mean, std):
 
     model.fit(train_X, train_Y)
     
-    save_path = os.path.join(config.RESULTS_DIR, "models", f"rf_{dataset_name}_best.pkl")
+    save_path = config.get_model_path('rf', dataset_name)
     model.save(save_path)
     print(f"  Saved RF model to {save_path}")
     

@@ -70,10 +70,7 @@ def train_model(model, train_loader, val_loader, config, model_name,
     )
     criterion = nn.MSELoss()
 
-    tag = f"_{save_tag}" if save_tag else ""
-    save_path = os.path.join(
-        config.RESULTS_DIR, "models", f"{model_name}_{dataset_name}{tag}_best.pt"
-    )
+    save_path = config.get_model_path(model_name, dataset_name, tag=save_tag)
     early_stopping = EarlyStopping(
         patience=config.PATIENCE, save_path=save_path
     )

@@ -16,11 +16,47 @@ RESULTS_DIR = os.path.join(PROJECT_ROOT, "results")
 METR_LA_PATH = os.path.join(DATASET_DIR, "METR-LA.csv")
 PEMS_BAY_PATH = os.path.join(DATASET_DIR, "PEMS-BAY.csv")
 
-# Create results directory if it doesn't exist
+# Create results directories
 os.makedirs(RESULTS_DIR, exist_ok=True)
-os.makedirs(os.path.join(RESULTS_DIR, "models"), exist_ok=True)
-os.makedirs(os.path.join(RESULTS_DIR, "plots"), exist_ok=True)
+os.makedirs(os.path.join(RESULTS_DIR, "plots"),   exist_ok=True)
 os.makedirs(os.path.join(RESULTS_DIR, "metrics"), exist_ok=True)
+
+# ── Model save directories (structured) ──────────────────────────────────────
+MODELS_DIR          = os.path.join(RESULTS_DIR, "models")
+BASELINE_MODELS_DIR = os.path.join(MODELS_DIR,  "baseline_models")
+GNN_MODELS_DIR      = os.path.join(MODELS_DIR,  "gnn_models")
+
+# GNN sub-dirs (one per architecture)
+_GNN_MODEL_NAMES = ["stgcn", "dcrnn"]
+for _name in _GNN_MODEL_NAMES:
+    os.makedirs(os.path.join(GNN_MODELS_DIR, _name), exist_ok=True)
+os.makedirs(BASELINE_MODELS_DIR, exist_ok=True)
+
+
+def get_model_path(model_name: str, dataset_name: str, tag: str = None) -> str:
+    """
+    Return the canonical save/load path for a trained model checkpoint.
+
+    GNN models  → results/models/gnn_models/<model>/
+    Baselines   → results/models/baseline_models/
+
+    Args:
+        model_name:   'stgcn', 'dcrnn', 'lstm', 'arima', or 'rf'
+        dataset_name: 'METR-LA' or 'PEMS-BAY'
+        tag:          optional suffix, e.g. 'ablation_random'
+
+    Returns:
+        Absolute path string (file not created).
+    """
+    tag_str = f"_{tag}" if tag else ""
+    ext     = ".pkl" if model_name in ("arima", "rf") else ".pt"
+    fname   = f"{model_name}_{dataset_name}{tag_str}_best{ext}"
+
+    if model_name in _GNN_MODEL_NAMES:
+        return os.path.join(GNN_MODELS_DIR, model_name, fname)
+    else:
+        return os.path.join(BASELINE_MODELS_DIR, fname)
+
 
 # ============================================================
 # Dataset configuration

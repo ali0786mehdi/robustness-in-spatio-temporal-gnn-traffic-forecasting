@@ -45,8 +45,7 @@ from src.models.sanity_baselines import PersistenceModel, HistoricalAverageModel
 
 def load_arima(dataset_name, pred_len):
     from src.models.arima_model import ARIMAForecaster
-    save_path = os.path.join(config.RESULTS_DIR, "models",
-                             f"arima_{dataset_name}_best.pkl")
+    save_path = config.get_model_path('arima', dataset_name)
     if not os.path.exists(save_path):
         print(f"  [skip] ARIMA checkpoint not found: {save_path}")
         return None
@@ -59,8 +58,7 @@ def load_arima(dataset_name, pred_len):
 
 def load_rf(dataset_name):
     from src.models.rf_model import RandomForestForecaster
-    save_path = os.path.join(config.RESULTS_DIR, "models",
-                             f"rf_{dataset_name}_best.pkl")
+    save_path = config.get_model_path('rf', dataset_name)
     if not os.path.exists(save_path):
         print(f"  [skip] Random Forest checkpoint not found: {save_path}")
         return None
@@ -71,8 +69,7 @@ def load_rf(dataset_name):
 
 def load_deep_model(model_name, dataset_name, num_sensors, graph_data=None):
     device    = config.DEVICE
-    save_path = os.path.join(config.RESULTS_DIR, "models",
-                             f"{model_name}_{dataset_name}_best.pt")
+    save_path = config.get_model_path(model_name, dataset_name)
     if not os.path.exists(save_path):
         print(f"  [skip] {model_name.upper()} checkpoint not found: {save_path}")
         return None
