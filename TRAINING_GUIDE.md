@@ -98,28 +98,73 @@ python -u run_sparsity_analysis.py
 
 ---
 
-## Step 8 — Ablation Studies (SAFE — saves to separate files)
+## Step 8 — Ablation Studies (SAFE — saves to SEPARATE files, never overwrites production)
 
-These will NOT overwrite any production checkpoints.  
-Results save to separate files with `ablation_` prefix automatically.
+The `--ablation` flag automatically activates `save_tag` inside the code.
+This means ablation checkpoints are saved with a different filename — your production models are **never touched**.
+
+### How save_tag works
+
+```
+--ablation identity  →  save_tag = "ablation_identity"
+--ablation random    →  save_tag = "ablation_random"
+no --ablation flag   →  save_tag = None  (production checkpoint)
+```
+
+### Identity Graph Ablation (each sensor sees ONLY itself — no spatial edges)
 
 ```bash
-# Identity graph ablation — STGCN only (~2.5 hrs)
+# STGCN with identity graph (~2.5 hrs)
 python -u run_gnn.py --dataset METR-LA --ablation identity --model stgcn
+
+# DCRNN with identity graph (~2.5 hrs)
+python -u run_gnn.py --dataset METR-LA --ablation identity --model dcrnn
 ```
 
-Saves to:  
-`results/models/gnn_models/stgcn/stgcn_METR-LA_ablation_identity_best.pt`  ← separate file  
-`results/metrics/METR-LA_gnn_ablation_identity.json`
+What gets saved — production files UNCHANGED:
+```
+results/models/gnn_models/stgcn/
+  stgcn_METR-LA_best.pt                    <- PRODUCTION (untouched)
+  stgcn_METR-LA_ablation_identity_best.pt  <- NEW ablation file
+
+results/models/gnn_models/dcrnn/
+  dcrnn_METR-LA_best.pt                    <- PRODUCTION (untouched)
+  dcrnn_METR-LA_ablation_identity_best.pt  <- NEW ablation file
+
+results/metrics/
+  METR-LA_gnn_ablation_identity.json       <- results JSON
+```
+
+---
+
+### Random Graph Ablation (same sparsity as learned graph, but random edges)
 
 ```bash
-# Random graph ablation — STGCN only (~2.5 hrs)
+# STGCN with random graph (~2.5 hrs)
 python -u run_gnn.py --dataset METR-LA --ablation random --model stgcn
+
+# DCRNN with random graph (~2.5 hrs)
+python -u run_gnn.py --dataset METR-LA --ablation random --model dcrnn
 ```
 
-Saves to:  
-`results/models/gnn_models/stgcn/stgcn_METR-LA_ablation_random_best.pt`  ← separate file  
-`results/metrics/METR-LA_gnn_ablation_random.json`
+What gets saved — production files UNCHANGED:
+```
+results/models/gnn_models/stgcn/
+  stgcn_METR-LA_best.pt                   <- PRODUCTION (untouched)
+  stgcn_METR-LA_ablation_random_best.pt   <- NEW ablation file
+
+results/models/gnn_models/dcrnn/
+  dcrnn_METR-LA_best.pt                   <- PRODUCTION (untouched)
+  dcrnn_METR-LA_ablation_random_best.pt   <- NEW ablation file
+
+results/metrics/
+  METR-LA_gnn_ablation_random.json        <- results JSON
+```
+
+> Safe to run ablation commands even while production checkpoints exist.
+> Safe to re-run ablations — they always write to the ablation_ files only.
+> Do NOT run run_gnn.py WITHOUT --ablation unless you intend to retrain the production model.
+
 
 ---
 
