@@ -35,11 +35,14 @@ class EarlyStopping:
 
 
 def train_model(model, train_loader, val_loader, config, model_name,
-                dataset_name, graph_data=None):
+                dataset_name, graph_data=None, save_tag=None):
     """
     Generic training loop for LSTM, STGCN, and DCRNN.
 
     Args:
+        save_tag: Optional string appended to the checkpoint filename
+                  (e.g. 'ablation_random') so ablation runs never
+                  overwrite production checkpoints.
         model: PyTorch model.
         train_loader: Training DataLoader.
         val_loader: Validation DataLoader.
@@ -67,8 +70,9 @@ def train_model(model, train_loader, val_loader, config, model_name,
     )
     criterion = nn.MSELoss()
 
+    tag = f"_{save_tag}" if save_tag else ""
     save_path = os.path.join(
-        config.RESULTS_DIR, "models", f"{model_name}_{dataset_name}_best.pt"
+        config.RESULTS_DIR, "models", f"{model_name}_{dataset_name}{tag}_best.pt"
     )
     early_stopping = EarlyStopping(
         patience=config.PATIENCE, save_path=save_path

@@ -18,12 +18,12 @@ from src.evaluate import evaluate_predictions, print_results, save_results, save
 from src.train import train_model, predict_model
 
 
-def run_stgcn(data_prepared, graph_data, dataset_name, mean, std):
+def run_stgcn(data_prepared, graph_data, dataset_name, mean, std, save_tag=None):
     """Run STGCN model."""
     from src.models.stgcn import STGCN
 
     print(f"\n{'='*60}")
-    print(f"  STGCN — {dataset_name}")
+    print(f"  STGCN — {dataset_name}" + (f" [{save_tag}]" if save_tag else ""))
     print(f"{'='*60}")
 
     num_sensors = data_prepared['splits']['train'][0].shape[2]
@@ -43,7 +43,7 @@ def run_stgcn(data_prepared, graph_data, dataset_name, mean, std):
         model, data_prepared['loaders']['train'],
         data_prepared['loaders']['val'],
         config, 'stgcn', dataset_name,
-        graph_data=graph_data,
+        graph_data=graph_data, save_tag=save_tag,
     )
 
     predictions, ground_truth, latency = predict_model(
@@ -57,12 +57,12 @@ def run_stgcn(data_prepared, graph_data, dataset_name, mean, std):
     return results, predictions, history
 
 
-def run_dcrnn(data_prepared, graph_data, dataset_name, mean, std):
+def run_dcrnn(data_prepared, graph_data, dataset_name, mean, std, save_tag=None):
     """Run DCRNN model."""
     from src.models.dcrnn import DCRNN
 
     print(f"\n{'='*60}")
-    print(f"  DCRNN — {dataset_name}")
+    print(f"  DCRNN — {dataset_name}" + (f" [{save_tag}]" if save_tag else ""))
     print(f"{'='*60}")
 
     num_sensors = data_prepared['splits']['train'][0].shape[2]
@@ -84,7 +84,7 @@ def run_dcrnn(data_prepared, graph_data, dataset_name, mean, std):
         model, data_prepared['loaders']['train'],
         data_prepared['loaders']['val'],
         config, 'dcrnn', dataset_name,
-        graph_data=graph_data,
+        graph_data=graph_data, save_tag=save_tag,
     )
 
     predictions, ground_truth, latency = predict_model(
@@ -140,7 +140,8 @@ def run_gnn_on_dataset(dataset_name, ablation=None, max_epochs=None,
     if 'stgcn' in models:
         try:
             results, preds, history = run_stgcn(
-                data_prepared, graph_data, dataset_name, mean, std
+                data_prepared, graph_data, dataset_name, mean, std,
+                save_tag=f"ablation_{ablation}" if ablation else None,
             )
             all_results['STGCN'] = results
             all_preds['STGCN'] = preds
@@ -153,7 +154,8 @@ def run_gnn_on_dataset(dataset_name, ablation=None, max_epochs=None,
     if 'dcrnn' in models:
         try:
             results, preds, history = run_dcrnn(
-                data_prepared, graph_data, dataset_name, mean, std
+                data_prepared, graph_data, dataset_name, mean, std,
+                save_tag=f"ablation_{ablation}" if ablation else None,
             )
             all_results['DCRNN'] = results
             all_preds['DCRNN'] = preds
