@@ -40,4 +40,4 @@ Thumbs.db
 # ── What SHOULD be committed ──────────────────────────────────────────────────
 # results/metrics/*.json    → experiment metrics (keep, small)
 # results/plots/*.png       → generated figures (keep, for paper)
-# requirements.txt          → keep
+
