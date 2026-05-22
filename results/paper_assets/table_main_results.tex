@@ -1,0 +1,15 @@
+\begin{table}[ht]
+\centering
+\caption{Traffic Forecasting Results on METR-LA}
+\label{tab:main_results}
+\begin{tabular}{l|ccc|ccc|ccc}
+\toprule
+ & \multicolumn{3}{c|}{15 min} & \multicolumn{3}{c|}{30 min} & \multicolumn{3}{c}{60 min} \\
+Model & MAE & RMSE & MAPE & MAE & RMSE & MAPE & MAE & RMSE & MAPE \\
+\midrule
+ARIMA & 3.288 & 6.459 & 8.32 & 3.880 & 7.734 & 10.23 & 4.888 & 9.637 & 13.38 \\
+RandomForest & 3.047 & 5.827 & 8.31 & 3.748 & 7.128 & 10.83 & 4.762 & 8.678 & 14.47 \\
+LSTM & 3.843 & 6.737 & 10.73 & 3.910 & 6.874 & 10.90 & 4.137 & 7.260 & 11.72 \\
+\bottomrule
+\end{tabular}
+\end{table}
