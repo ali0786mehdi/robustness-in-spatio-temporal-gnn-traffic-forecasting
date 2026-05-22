@@ -8,6 +8,7 @@ import time
 import numpy as np
 import torch
 import torch.nn as nn
+from torch.cuda.amp import GradScaler, autocast
 from tqdm import tqdm
 
 
@@ -57,6 +58,15 @@ def train_model(model, train_loader, val_loader, config, model_name,
     device = config.DEVICE
     model = model.to(device)
 
+    # ── Automatic Mixed Precision ────────────────────────────────────────────
+    use_amp = getattr(config, 'USE_AMP', True) and device.type == 'cuda'
+    scaler  = GradScaler(enabled=use_amp)
+    if use_amp:
+        print(f"  AMP enabled (fp16 Tensor Cores active)")
+
+    # ── cuDNN benchmark (faster for fixed input shapes) ──────────────────────
+    if device.type == 'cuda':
+        torch.backends.cudnn.benchmark = getattr(config, 'CUDNN_BENCHMARK', True)
     optimizer = torch.optim.Adam(
         model.parameters(),
         lr=config.LEARNING_RATE,
@@ -107,22 +117,24 @@ def train_model(model, train_loader, val_loader, config, model_name,
 
             optimizer.zero_grad()
 
-            if model_name == 'stgcn':
-                pred = model(batch_x, cheb_polys_tensor)
-            elif model_name == 'dcrnn':
-                # Teacher forcing ratio decays over epochs
-                tf_ratio = max(0.0, 1.0 - epoch / (config.EPOCHS * 0.5))
-                pred = model(batch_x, supports_tensor, batch_y, tf_ratio)
-            else:
-                pred = model(batch_x)
+            with autocast(enabled=use_amp):
+                if model_name == 'stgcn':
+                    pred = model(batch_x, cheb_polys_tensor)
+                elif model_name == 'dcrnn':
+                    tf_ratio = max(0.0, 1.0 - epoch / (config.EPOCHS * 0.5))
+                    pred = model(batch_x, supports_tensor, batch_y, tf_ratio)
+                else:
+                    pred = model(batch_x)
+                loss = criterion(pred, batch_y)
 
-            loss = criterion(pred, batch_y)
-            loss.backward()
+            scaler.scale(loss).backward()
 
             if config.GRAD_CLIP > 0:
+                scaler.unscale_(optimizer)
                 torch.nn.utils.clip_grad_norm_(model.parameters(), config.GRAD_CLIP)
 
-            optimizer.step()
+            scaler.step(optimizer)
+            scaler.update()
             train_losses.append(loss.item())
 
         train_loss = np.mean(train_losses)
@@ -136,14 +148,14 @@ def train_model(model, train_loader, val_loader, config, model_name,
                 batch_x = batch_x.to(device)
                 batch_y = batch_y.to(device)
 
-                if model_name == 'stgcn':
-                    pred = model(batch_x, cheb_polys_tensor)
-                elif model_name == 'dcrnn':
-                    pred = model(batch_x, supports_tensor)
-                else:
-                    pred = model(batch_x)
-
-                loss = criterion(pred, batch_y)
+                with autocast(enabled=use_amp):
+                    if model_name == 'stgcn':
+                        pred = model(batch_x, cheb_polys_tensor)
+                    elif model_name == 'dcrnn':
+                        pred = model(batch_x, supports_tensor)
+                    else:
+                        pred = model(batch_x)
+                    loss = criterion(pred, batch_y)
                 val_losses.append(loss.item())
 
         val_loss = np.mean(val_losses)
@@ -184,9 +196,10 @@ def train_model(model, train_loader, val_loader, config, model_name,
     avg_epoch_time = np.mean(history.get('epoch_times', []))
     
     history['efficiency'] = {
-        'param_count': param_count,
-        'peak_gpu_mb': peak_gpu,
-        'train_time_per_epoch_s': avg_epoch_time,
+        'param_count':              param_count,
+        'peak_gpu_mb':              peak_gpu,
+        'train_time_per_epoch_s':   avg_epoch_time,
+        'amp_enabled':              use_amp,
     }
 
     return history

@@ -199,6 +199,11 @@ def create_dataloaders(splits, batch_size=64):
     Returns:
         dict: Dictionary with 'train', 'val', 'test' DataLoaders.
     """
+    # num_workers>0 allows the CPU to prepare the next batch while GPU processes
+    # the current one, eliminating CPU starvation of the GPU.
+    num_workers     = 4
+    prefetch_factor = 2 if num_workers > 0 else None
+
     loaders = {}
     for name, (X, Y) in splits.items():
         dataset = TrafficDataset(X, Y)
@@ -207,8 +212,10 @@ def create_dataloaders(splits, batch_size=64):
             dataset,
             batch_size=batch_size,
             shuffle=shuffle,
-            num_workers=0,
-            pin_memory=True,
+            num_workers=num_workers,
+            pin_memory=True,            # zero-copy transfer to GPU
+            persistent_workers=(num_workers > 0),  # keep workers alive between epochs
+            prefetch_factor=prefetch_factor,        # prefetch N batches per worker
             drop_last=False,
         )
 

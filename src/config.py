@@ -96,14 +96,20 @@ DIFFUSION_STEPS = 2         # For DCRNN diffusion convolution
 # Training hyperparameters
 # ============================================================
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-BATCH_SIZE = 64
+BATCH_SIZE    = 128          # Increased from 64 — safe with AMP on RTX 4060 8GB
 LEARNING_RATE = 1e-3
-WEIGHT_DECAY = 1e-4
-EPOCHS = 100
-PATIENCE = 15               # Early stopping patience
-GRAD_CLIP = 5.0             # Gradient clipping max norm
+WEIGHT_DECAY  = 1e-4
+EPOCHS        = 100
+PATIENCE      = 15               # Early stopping patience
+GRAD_CLIP     = 5.0             # Gradient clipping max norm
 SCHEDULER_PATIENCE = 5      # LR scheduler patience
-SCHEDULER_FACTOR = 0.5      # LR scheduler reduction factor
+SCHEDULER_FACTOR   = 0.5      # LR scheduler reduction factor
+
+# ── Performance flags ────────────────────────────────────────────────────────────
+USE_AMP         = True   # Automatic Mixed Precision (fp16 Tensor Cores on RTX)
+CUDNN_BENCHMARK = True   # Auto-select fastest cuDNN kernel for fixed input shape
+                          # Note: disables exact bit-for-bit reproducibility
+                          # Set False if you need exact gradient reproducibility
 
 # ============================================================
 # Model hyperparameters
@@ -165,8 +171,10 @@ def set_seed(seed=SEED):
     if torch.cuda.is_available():
         torch.cuda.manual_seed(seed)
         torch.cuda.manual_seed_all(seed)
-        torch.backends.cudnn.deterministic = True
-        torch.backends.cudnn.benchmark = False
+        # deterministic=True forces slower algos for exact reproducibility.
+        # We only enable it when CUDNN_BENCHMARK is off.
+        torch.backends.cudnn.deterministic = not CUDNN_BENCHMARK
+        torch.backends.cudnn.benchmark     = CUDNN_BENCHMARK
 
 
 def get_device():
