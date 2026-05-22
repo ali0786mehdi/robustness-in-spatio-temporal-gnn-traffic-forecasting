@@ -15,8 +15,9 @@ build/
 # ── Dataset files (too large for git) ────────────────────────────────────────
 dataset/*.csv
 
-# ── Trained model checkpoints ────────────────────────────────────────────────
-results/models/
+# ── Trained model checkpoints (structured directories) ───────────────────────
+results/models/gnn_models/
+results/models/baseline_models/
 *.pt
 *.pth
 *.pkl
