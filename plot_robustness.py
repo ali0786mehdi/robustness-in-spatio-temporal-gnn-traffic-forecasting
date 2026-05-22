@@ -65,22 +65,38 @@ def plot_degradation_curves(results, dataset="METR-LA", save_dir=None):
 
     for ax, scenario in zip(axes, scenarios):
         scenario_data = results[scenario]
-        # Ratios stored as float keys in the JSON
-        ratio_keys = list(scenario_data.keys())
-        ratios_pct = [float(r) * 100 for r in ratio_keys]
+        ratio_keys    = list(scenario_data.keys())
+        ratios_pct    = [float(r) * 100 for r in ratio_keys]
 
-        # Only plot models that are present in the data
         available = set(scenario_data[ratio_keys[0]].keys())
+
+        def _mean_std(entry, model):
+            """Support both old float and new {mean, std} JSON formats."""
+            v = entry.get(model)
+            if v is None:
+                return None, 0.0
+            if isinstance(v, dict):
+                return v['mean'], v.get('std', 0.0)
+            return float(v), 0.0
 
         for model, style in MODEL_STYLE.items():
             if model not in available:
                 continue
-            maes = [scenario_data[r][model] for r in ratio_keys]
-            baseline = maes[0]
-            ax.plot(ratios_pct, maes, linewidth=2.2, markersize=7, **style)
-            # Shade degradation area
-            ax.fill_between(ratios_pct, baseline, maes,
-                            color=style["color"], alpha=0.06)
+            means, stds = [], []
+            for r in ratio_keys:
+                m, s = _mean_std(scenario_data[r], model)
+                means.append(m); stds.append(s)
+
+            means = np.array(means, dtype=float)
+            stds  = np.array(stds,  dtype=float)
+
+            ax.plot(ratios_pct, means, linewidth=2.2, markersize=7, **style)
+
+            # ±1σ shaded band (only where std > 0)
+            if stds.max() > 0:
+                ax.fill_between(ratios_pct,
+                                means - stds, means + stds,
+                                color=style["color"], alpha=0.18)
 
         ax.set_title(scenario_titles.get(scenario, scenario), pad=10)
         ax.set_xlabel("Corruption Ratio (%)")
@@ -99,64 +115,53 @@ def plot_degradation_curves(results, dataset="METR-LA", save_dir=None):
     return path
 
 
-def print_analysis(results):
-    """Dynamically compute and print a research finding summary from actual results."""
-    print("\n" + "=" * 65)
-    print("  ROBUSTNESS ANALYSIS")
-    print("=" * 65)
 
-    ratio_keys = None
+def print_analysis(results):
+    """Dynamically compute and print a research finding summary."""
+    print("\n" + "=" * 68)
+    print("  ROBUSTNESS ANALYSIS  (mean ± std over corruption seeds)")
+    print("=" * 68)
+
+    def _get(entry, model):
+        v = entry.get(model)
+        if v is None:
+            return None, None
+        if isinstance(v, dict):
+            return v['mean'], v.get('std', 0.0)
+        return float(v), 0.0
 
     for scenario, data in results.items():
         ratio_keys = list(data.keys())
-        worst_key  = ratio_keys[-1]   # e.g. "0.4"
+        worst_key  = ratio_keys[-1]
         worst_pct  = int(float(worst_key) * 100)
 
         available_models = list(data[ratio_keys[0]].keys())
 
         print(f"\n  Scenario: {scenario.replace('_', ' ').title()}")
         col_w = max(len(m) for m in available_models) + 2
-        header = f"  {'Model':<{col_w}}  {'MAE 0%':>8}  {'MAE {:.0f}%'.format(worst_pct):>10}  {'Δ MAE':>8}  {'Deg. %':>7}"
-        print(header)
-        print(f"  {'-' * (len(header) - 2)}")
+        print(f"  {'Model':<{col_w}}  {'MAE 0%':>10}  {'MAE {:.0f}% (μ±σ)'.format(worst_pct):>16}  {'Δ MAE':>8}  {'Deg.%':>7}")
+        print(f"  {'-'*(col_w + 46)}")
 
         degradations = {}
         for model in available_models:
-            base  = data["0.0"][model]
-            worst = data[worst_key][model]
-            delta = worst - base
-            pct   = delta / base * 100
+            base_m,  _     = _get(data["0.0"],    model)
+            worst_m, worst_s = _get(data[worst_key], model)
+            if base_m is None or worst_m is None:
+                continue
+            delta = worst_m - base_m
+            pct   = delta / base_m * 100
             degradations[model] = pct
-            print(f"  {model:<{col_w}}  {base:>8.3f}  {worst:>10.3f}  {delta:>+8.3f}  {pct:>6.1f}%")
+            worst_str = f"{worst_m:.3f}±{worst_s:.3f}"
+            print(f"  {model:<{col_w}}  {base_m:>10.4f}  {worst_str:>16}  {delta:>+8.3f}  {pct:>6.1f}%")
 
-        # Most / least robust
         deep_models = [m for m in available_models if m in ("LSTM", "STGCN", "DCRNN")]
         if deep_models:
-            most_robust  = min(deep_models, key=lambda m: degradations[m])
-            least_robust = max(deep_models, key=lambda m: degradations[m])
+            most_robust  = min(deep_models, key=lambda m: degradations.get(m, 999))
+            least_robust = max(deep_models, key=lambda m: degradations.get(m, 0))
             print(f"\n  → Most robust deep model:  {most_robust} ({degradations[most_robust]:.1f}%)")
             print(f"  → Least robust deep model: {least_robust} ({degradations[least_robust]:.1f}%)")
 
-    print("\n" + "=" * 65)
-    print("  INTERPRETATION")
-    print("=" * 65)
-    print("""
-  Historical Average is completely immune to input corruption because
-  it never looks at the input sequences — it always returns the
-  time-of-day average from training. This serves as an important
-  reference ceiling: any model that degrades past this threshold is
-  worse than a zero-parameter lookup table under that failure rate.
-
-  STGCN consistently shows the best resilience among graph models.
-  Its Chebyshev convolution operates on a fixed polynomial basis,
-  making it less sensitive to noisy neighbour values than DCRNN's
-  diffusion steps which explicitly propagate values through the graph.
-
-  DCRNN's bidirectional diffusion is a double-edged sword:
-  under random missing data, noisy values spread across hops and
-  degrade predictions; under structured sensor failure, it can route
-  around completely dead nodes, recovering information from neighbours.
-""")
+    print("\n" + "=" * 68)
 
 
 if __name__ == "__main__":
