@@ -1,43 +1,43 @@
-# ── Python ───────────────────────────────────────────────────────────────────
-venv/
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
-.Python
-*.egg-info/
-dist/
-build/
+# # ── Python ───────────────────────────────────────────────────────────────────
+# venv/
+# __pycache__/
+# *.pyc
+# *.pyo
+# *.pyd
+# .Python
+# *.egg-info/
+# dist/
+# build/
 
-# ── Jupyter ───────────────────────────────────────────────────────────────────
-/notebooks/*.ipynb_checkpoints/
+# # ── Jupyter ───────────────────────────────────────────────────────────────────
+# /notebooks/*.ipynb_checkpoints/
 
-# ── Dataset files (too large for git) ────────────────────────────────────────
-dataset/*.csv
+# # ── Dataset files (too large for git) ────────────────────────────────────────
+# dataset/*.csv
 
-# ── Trained model checkpoints (structured directories) ───────────────────────
-results/models/gnn_models/
-results/models/baseline_models/
-*.pt
-*.pth
-*.pkl
+# # ── Trained model checkpoints (structured directories) ───────────────────────
+# results/models/gnn_models/
+# results/models/baseline_models/
+# *.pt
+# *.pth
+# *.pkl
 
-# ── Cached graph arrays (regenerated at runtime) ──────────────────────────────
-results/*.npy
-*.npy
+# # ── Cached graph arrays (regenerated at runtime) ──────────────────────────────
+# results/*.npy
+# *.npy
 
-# ── Training logs (ephemeral, regenerated each run) ──────────────────────────
-results/training_log*.txt
-results/*.txt
-*.log
+# # ── Training logs (ephemeral, regenerated each run) ──────────────────────────
+# results/training_log*.txt
+# results/*.txt
+# *.log
 
-# ── IDE / OS ──────────────────────────────────────────────────────────────────
-.vscode/
-.idea/
-.DS_Store
-Thumbs.db
+# # ── IDE / OS ──────────────────────────────────────────────────────────────────
+# .vscode/
+# .idea/
+# .DS_Store
+# Thumbs.db
 
-# ── What SHOULD be committed ──────────────────────────────────────────────────
-# results/metrics/*.json    → experiment metrics (keep, small)
-# results/plots/*.png       → generated figures (keep, for paper)
+# # ── What SHOULD be committed ──────────────────────────────────────────────────
+# # results/metrics/*.json    → experiment metrics (keep, small)
+# # results/plots/*.png       → generated figures (keep, for paper)
 
