@@ -101,7 +101,7 @@ GraphNN/
 ├── plot_robustness.py                # Robustness curves with ±1σ bands
 ├── generate_paper_assets.py          # LaTeX tables + CSV summaries
 ├── validate.py                       # Full pipeline sanity check
-├── TRAINING_GUIDE.md                 # Step-by-step training instructions
+├── installation.md                   # Step-by-step training instructions
 ├── SETUP.md                          # Environment setup guide
 └── requirements.txt                  # Python dependencies
 ```
