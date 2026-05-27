@@ -1,0 +1,9 @@
+{
+  "LSTM": {
+    "param_count": 55372,
+    "peak_gpu_mb": 1520.2626953125,
+    "train_time_per_epoch_s": 6.882316946983337,
+    "amp_enabled": true,
+    "inference_latency_ms": 21.407480593080873
+  }
+}
