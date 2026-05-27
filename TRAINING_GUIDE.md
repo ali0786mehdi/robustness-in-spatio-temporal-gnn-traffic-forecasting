@@ -116,7 +116,24 @@ Saves to:
 python -u run_sparsity_analysis.py
 ```
 
+Saves to: `results/metrics/METR-LA_sparsity_analysis.json`
+
 ---
+
+### Step 8b — Graph Sparsity Ablation (~3–4 hrs)
+
+This retrains STGCN and DCRNN at different graph sparsity thresholds (ε=0.1, 0.2, 0.3, 0.4, 0.5) to measure how graph density affects performance. The plot script in Step 10 reads from this.
+
+```bash
+python -u run_sparsity_ablation.py
+```
+
+Saves to: `results/metrics/METR-LA_sparsity_ablation.json`
+
+> This is separate from Step 8. Step 8 is pure math (eigenvalues, spectral analysis).
+> Step 8b actually retrains models — it takes longer but saves to a separate file.
+
+
 
 ## PHASE 4 — Ablation Studies (SAFE — separate files, production untouched)
 
@@ -237,12 +254,13 @@ git push
 | 6 | Baselines PEMS-BAY | ~45 min |
 | 7 | Robustness (×2) | ~40 min |
 | 8 | Sparsity analysis | ~25 min |
+| 8b | Sparsity ablation | ~3–4 hrs |
 | 9a | Identity ablation | ~5 hrs |
 | 9b | Random ablation | ~5 hrs |
 | 10b | **Paper assets** | **~1 min** |
-| **Total** | | **~24–26 hrs** |
+| **Total** | | **~28–30 hrs** |
 
-Steps 1–8 are the core results: **~14–16 hrs**  
+Steps 1–8b are the core results: **~17–20 hrs**  
 Steps 9a–9b are ablations (optional but recommended): **+10 hrs**
 
 ---
@@ -256,7 +274,9 @@ Steps 9a–9b are ablations (optional but recommended): **+10 hrs**
 | `run_gnn.py --ablation X` | Yes (separate file) | `..._ablation_X_best.pt` |
 | `run_robustness.py` | No | `metrics/*_robustness.json` |
 | `run_sparsity_analysis.py` | No | `metrics/*_sparsity_analysis.json` |
+| `run_sparsity_ablation.py` | Yes (retrains at each ε) | `metrics/*_sparsity_ablation.json` |
 | `plot_robustness.py` | No | `plots/*_robustness_curves.png` |
+| `plot_sparsity_ablation.py` | No | `plots/*_sparsity_ablation.png` |
 | `generate_paper_assets.py` | No | `paper_assets/*.tex, *.csv, *.md` |
 | `validate.py` | No | Console output only |
 
