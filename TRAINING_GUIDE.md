@@ -110,7 +110,7 @@ Saves to:
 
 ---
 
-### Step 8 — Graph Sparsity Analysis (~25 min)
+### Step 8a — Graph Sparsity Analysis (~25 min)
 
 ```bash
 python -u run_sparsity_analysis.py
