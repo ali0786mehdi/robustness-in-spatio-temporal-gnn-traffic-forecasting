@@ -1,0 +1,18 @@
+\begin{table}[ht]
+\centering
+\caption{Model Architecture Comparison}
+\label{tab:architecture}
+\begin{tabular}{lcccr}
+\toprule
+Model & Spatial & Temporal & Graph Type & Params \\
+\midrule
+Persistence & — & Copy last & — & 0 \\
+Hist. Average & — & Time-of-day lookup & — & 0 \\
+ARIMA & ARIMA(3,0,1) & Per-sensor ARIMA & — & N/A \\
+Random Forest & sklearn RF & Flatten → predict & — & 3,726,000 \\
+LSTM & 2-layer GRU-style & Sequential & — & 55,372 \\
+STGCN & ChebConv(K=3) & Spectral graph & Gated 1D CNN & 79,532 \\
+DCRNN & DiffusionConv(K=2) & Spatial diffusion & DCGRU seq2seq & 223,169 \\
+\bottomrule
+\end{tabular}
+\end{table}

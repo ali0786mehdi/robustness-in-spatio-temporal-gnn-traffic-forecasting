@@ -1,0 +1,33 @@
+\begin{table}[ht]
+\centering
+\caption{Robustness Under Random Missing Data (METR-LA)}
+\label{tab:robustness}
+\textbf{Random Missing}
+
+\begin{tabular}{lccccccc}
+\toprule
+Corruption & ARIMA & DCRNN & HistoricalAverage & LSTM & Persistence & RandomForest & STGCN \\
+\midrule
+0\% & 3.990 $\pm$ 0.000 & 3.548 $\pm$ 0.000 & 5.120 $\pm$ 0.000 & 3.707 $\pm$ 0.000 & 3.856 $\pm$ 0.000 & 3.758 $\pm$ 0.000 & 3.634 $\pm$ 0.000 \\
+10\% & 4.249 $\pm$ 0.004 & 3.873 $\pm$ 0.001 & 5.120 $\pm$ 0.000 & 4.014 $\pm$ 0.001 & 4.134 $\pm$ 0.003 & 4.036 $\pm$ 0.001 & 3.842 $\pm$ 0.002 \\
+20\% & 4.513 $\pm$ 0.006 & 4.180 $\pm$ 0.001 & 5.120 $\pm$ 0.000 & 4.306 $\pm$ 0.001 & 4.414 $\pm$ 0.002 & 4.319 $\pm$ 0.001 & 4.082 $\pm$ 0.004 \\
+30\% & 4.777 $\pm$ 0.006 & 4.478 $\pm$ 0.002 & 5.120 $\pm$ 0.000 & 4.593 $\pm$ 0.001 & 4.692 $\pm$ 0.001 & 4.606 $\pm$ 0.001 & 4.337 $\pm$ 0.002 \\
+40\% & 5.040 $\pm$ 0.008 & 4.771 $\pm$ 0.004 & 5.120 $\pm$ 0.000 & 4.885 $\pm$ 0.001 & 4.970 $\pm$ 0.003 & 4.897 $\pm$ 0.002 & 4.614 $\pm$ 0.004 \\
+\bottomrule
+\end{tabular}
+
+\textbf{Sensor Failure}
+
+\begin{tabular}{lccccccc}
+\toprule
+Corruption & ARIMA & DCRNN & HistoricalAverage & LSTM & Persistence & RandomForest & STGCN \\
+\midrule
+0\% & 3.990 $\pm$ 0.000 & 3.548 $\pm$ 0.000 & 5.120 $\pm$ 0.000 & 3.707 $\pm$ 0.000 & 3.856 $\pm$ 0.000 & 3.758 $\pm$ 0.000 & 3.634 $\pm$ 0.000 \\
+10\% & 4.260 $\pm$ 0.102 & 3.834 $\pm$ 0.092 & 5.120 $\pm$ 0.000 & 4.014 $\pm$ 0.097 & 4.146 $\pm$ 0.110 & 4.060 $\pm$ 0.098 & 3.954 $\pm$ 0.148 \\
+20\% & 4.522 $\pm$ 0.148 & 4.144 $\pm$ 0.146 & 5.120 $\pm$ 0.000 & 4.316 $\pm$ 0.145 & 4.430 $\pm$ 0.159 & 4.356 $\pm$ 0.145 & 4.274 $\pm$ 0.260 \\
+30\% & 4.791 $\pm$ 0.159 & 4.454 $\pm$ 0.164 & 5.120 $\pm$ 0.000 & 4.611 $\pm$ 0.150 & 4.707 $\pm$ 0.162 & 4.646 $\pm$ 0.150 & 4.613 $\pm$ 0.174 \\
+40\% & 5.014 $\pm$ 0.178 & 4.718 $\pm$ 0.169 & 5.120 $\pm$ 0.000 & 4.858 $\pm$ 0.164 & 4.934 $\pm$ 0.181 & 4.888 $\pm$ 0.165 & 4.903 $\pm$ 0.213 \\
+\bottomrule
+\end{tabular}
+
+\end{table}
