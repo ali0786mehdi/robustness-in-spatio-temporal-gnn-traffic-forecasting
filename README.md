@@ -126,13 +126,13 @@ pip install -r requirements.txt
 
 **Requirements:** Python 3.10+, NVIDIA GPU with CUDA (RTX 3060+ recommended), 16GB RAM
 
-> 📖 For detailed environment setup (Windows/Linux, CUDA installation, troubleshooting), see [SETUP.md](SETUP.md).
+> 📖 For detailed environment setup (Windows/Linux, CUDA installation, troubleshooting), see [SETUP](SETUP.md).
 
 ---
 
 ## Installation & Training
 
-> 📖 For complete step-by-step training instructions, see [TRAINING_GUIDE.md](TRAINING_GUIDE.md).
+> 📖 For complete step-by-step training instructions, see [Installation](installation.md).
 
 ### Train everything (~14–16 hrs on RTX 4060)
 
