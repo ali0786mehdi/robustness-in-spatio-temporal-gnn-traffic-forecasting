@@ -77,6 +77,7 @@ def train_eval_stgcn(data_prepared, graph_data, label, mean, std, epochs, datase
     history = train_model(
         model, data_prepared['loaders']['train'], data_prepared['loaders']['val'],
         _config, 'stgcn', dataset_name, graph_data=graph_data,
+        save_tag=f'sparsity_eps{label.split("=")[1]}',
     )
 
     preds, gt, _ = predict_model(
@@ -110,6 +111,7 @@ def train_eval_dcrnn(data_prepared, graph_data, label, mean, std, epochs, datase
     history = train_model(
         model, data_prepared['loaders']['train'], data_prepared['loaders']['val'],
         _config, 'dcrnn', dataset_name, graph_data=graph_data,
+        save_tag=f'sparsity_eps{label.split("=")[1]}',
     )
 
     preds, gt, _ = predict_model(
