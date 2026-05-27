@@ -126,9 +126,13 @@ pip install -r requirements.txt
 
 **Requirements:** Python 3.10+, NVIDIA GPU with CUDA (RTX 3060+ recommended), 16GB RAM
 
+> 📖 For detailed environment setup (Windows/Linux, CUDA installation, troubleshooting), see [SETUP.md](SETUP.md).
+
 ---
 
-## Quick Start
+## Installation & Training
+
+> 📖 For complete step-by-step training instructions, see [TRAINING_GUIDE.md](TRAINING_GUIDE.md).
 
 ### Train everything (~14–16 hrs on RTX 4060)
 
@@ -162,8 +166,6 @@ python generate_paper_assets.py
 python validate.py --dataset METR-LA
 python validate.py --dataset PEMS-BAY
 ```
-
-> See [TRAINING_GUIDE.md](TRAINING_GUIDE.md) for detailed step-by-step instructions.
 
 ---
 
