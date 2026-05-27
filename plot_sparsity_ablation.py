@@ -46,14 +46,38 @@ def load_results(dataset="METR-LA"):
     path = os.path.join(config.RESULTS_DIR, "metrics",
                         f"{dataset}_sparsity_ablation.json")
     with open(path) as f:
-        return json.load(f)
+        data = json.load(f)
+
+    # Handle list format (older versions saved as list instead of dict)
+    if isinstance(data, list):
+        converted = {}
+        for item in data:
+            if isinstance(item, dict):
+                # Try to find epsilon key
+                eps = item.get("epsilon", item.get("eps", None))
+                if eps is not None:
+                    converted[f"eps={eps}"] = item
+                elif "graph_stats" in item:
+                    # Guess epsilon from graph stats or use index
+                    converted[f"item_{len(converted)}"] = item
+        data = converted if converted else {f"eps={i}": item for i, item in enumerate(data)}
+
+    return data
 
 
 def plot_sparsity_ablation(results, dataset="METR-LA", save_dir=None):
     labels      = list(results.keys())                # ["eps=0.1", ...]
-    epsilons    = [float(l.split("=")[1]) for l in labels]
+    epsilons    = [float(l.split("=")[1]) for l in labels if "=" in l]
     avg_conns   = [results[l]["graph_stats"]["avg_conn"] for l in labels]
     densities   = [results[l]["graph_stats"]["density_pct"] for l in labels]
+
+    # Check if any models have data
+    has_models = any(len(results[l].get("models", {})) > 0 for l in labels)
+    if not has_models:
+        print("  ⚠ No model results found in sparsity ablation data.")
+        print("    The JSON has graph_stats but 'models' is empty for all epsilons.")
+        print("    Re-run: python -u run_sparsity_ablation.py")
+        return None
 
     fig, axes = plt.subplots(2, 2, figsize=(14, 10))
     fig.suptitle(f"Graph Sparsity Ablation — {dataset}",
@@ -155,7 +179,15 @@ def plot_sparsity_ablation(results, dataset="METR-LA", save_dir=None):
 
 
 def print_key_findings(results):
+    if not isinstance(results, dict):
+        print("  ⚠ Results format unexpected — skipping key findings.")
+        return
     labels   = list(results.keys())
+    has_models = any(len(results[l].get("models", {})) > 0 for l in labels)
+    if not has_models:
+        print("\n  ⚠ No model results to summarize — 'models' is empty in all entries.")
+        print("    Re-run: python -u run_sparsity_ablation.py")
+        return
     print(f"\n{'='*65}")
     print("  KEY FINDINGS: GRAPH SPARSITY ABLATION")
     print(f"{'='*65}")
