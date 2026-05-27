@@ -42,5 +42,4 @@ Thumbs.db
 # results/plots/*.png       → generated figures (keep, for paper)
 
 # Old Results
-results(old)/
-/
+.gitignore
