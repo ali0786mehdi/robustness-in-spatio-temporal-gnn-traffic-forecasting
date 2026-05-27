@@ -41,3 +41,6 @@ Thumbs.db
 # results/metrics/*.json    → experiment metrics (keep, small)
 # results/plots/*.png       → generated figures (keep, for paper)
 
+# Old Results
+results(old)/
+/
