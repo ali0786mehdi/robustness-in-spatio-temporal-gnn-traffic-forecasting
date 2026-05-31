@@ -20,7 +20,7 @@ class ARIMAForecaster:
     Predict can then be called repeatedly on any (possibly corrupted) test_X.
     """
 
-    def __init__(self, order=(3, 0, 1), max_sensors=None):
+    def __init__(self, order=(2, 1, 2), max_sensors=None):
         self.order = order
         self.max_sensors = max_sensors
         self.fitted_params = {}   # sensor_idx -> np.ndarray of ARIMA params

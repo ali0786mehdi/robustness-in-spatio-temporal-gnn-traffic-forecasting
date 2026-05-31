@@ -110,13 +110,15 @@ Saves to:
 
 ---
 
-### Step 8 — Graph Sparsity Analysis (~25 min)
+### Step 8a — Graph Sparsity Analysis (~25 min)
 
 ```bash
 python -u run_sparsity_analysis.py
 ```
 
----
+Saves to: `results/metrics/METR-LA_sparsity_analysis.json`
+
+
 
 ## PHASE 4 — Ablation Studies (SAFE — separate files, production untouched)
 
@@ -174,7 +176,6 @@ results/metrics/METR-LA_gnn_ablation_random.json
 
 ```bash
 python plot_robustness.py
-python plot_sparsity_ablation.py
 ```
 
 Saves to: `results/plots/`

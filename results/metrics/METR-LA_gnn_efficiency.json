@@ -1,0 +1,9 @@
+{
+  "STGCN": {
+    "param_count": 79532,
+    "peak_gpu_mb": 920.9130859375,
+    "train_time_per_epoch_s": 2.7287446604834664,
+    "amp_enabled": true,
+    "inference_latency_ms": 24.7304395393089
+  }
+}

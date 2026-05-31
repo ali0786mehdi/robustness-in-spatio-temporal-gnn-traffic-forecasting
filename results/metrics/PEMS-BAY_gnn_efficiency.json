@@ -1,0 +1,9 @@
+{
+  "DCRNN": {
+    "param_count": 371393,
+    "peak_gpu_mb": 6366.86376953125,
+    "train_time_per_epoch_s": 99.09088497638703,
+    "amp_enabled": true,
+    "inference_latency_ms": 307.4540539485652
+  }
+}

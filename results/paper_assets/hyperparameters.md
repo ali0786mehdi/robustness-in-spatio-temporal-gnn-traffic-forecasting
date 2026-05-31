@@ -47,5 +47,5 @@
 - Max depth: 15
 
 ## ARIMA
-- Order (p,d,q): (3, 0, 1)
+- Order (p,d,q): (2, 1, 2)
 - Max sensors: 30

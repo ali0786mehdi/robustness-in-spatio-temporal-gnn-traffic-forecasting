@@ -141,7 +141,7 @@ RF_N_JOBS = -1
 # ============================================================
 # ARIMA
 # ============================================================
-ARIMA_ORDER = (3, 0, 1)       # (p, d, q) — default, can be auto-tuned
+ARIMA_ORDER = (2, 1, 2)       # (p, d, q) — default, can be auto-tuned
 ARIMA_MAX_SENSORS = 30        # Fit ARIMA on subset of sensors for speed
 
 # ============================================================
